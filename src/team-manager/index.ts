@@ -3,24 +3,29 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { existsSync } from 'fs';
-
+import { BackendType } from '../communication/factory.js';
+import { ApprovalCriteria } from '../approval/index.js';
 
 export interface TeamConfig {
   name: string;
   createdAt: number;
+  backend: BackendType;
   leadProvider: {
-    type: 'anthropic' | 'openai' | 'ollama';
+    type: 'anthropic' | 'openai' | 'ollama' | 'lmstudio' | 'llama-server';
     model?: string;
+    baseURL?: string;
   };
   teammateProvider?: {
-    type: 'anthropic' | 'openai' | 'ollama';
+    type: 'anthropic' | 'openai' | 'ollama' | 'lmstudio' | 'llama-server';
     model?: string;
+    baseURL?: string;
   };
   budget?: {
     maxTokens: number;
     maxCost?: number;
   };
   uiMode: 'inline' | 'split';
+  approvalCriteria?: ApprovalCriteria;
 }
 
 export interface TeamInfo {
@@ -58,17 +63,26 @@ export class TeamManager {
   }
 
   async spawnTeam(config: TeamConfig): Promise<void> {
+    console.log(`[TeamManager] Spawning team: ${config.name}`);
     const teamPath = this.getTeamPath(config.name);
+    console.log(`[TeamManager] Team path: ${teamPath}`);
 
     // チームディレクトリ作成
     await fs.mkdir(teamPath, { recursive: true });
+    console.log(`[TeamManager] Created team directory`);
+
     await fs.mkdir(path.join(teamPath, 'messages'), { recursive: true });
     await fs.mkdir(path.join(teamPath, 'shared'), { recursive: true });
     await fs.mkdir(path.join(teamPath, 'logs'), { recursive: true });
+    console.log(`[TeamManager] Created subdirectories`);
 
     // 設定ファイル保存
     const configPath = this.getConfigPath(config.name);
+    console.log(`[TeamManager] Config path: ${configPath}`);
+    console.log(`[TeamManager] Config to save:`, JSON.stringify(config, null, 2));
+
     await fs.writeFile(configPath, JSON.stringify(config, null, 2));
+    console.log(`[TeamManager] Saved config file`);
 
     // 初期状態
     const state = {
@@ -79,6 +93,7 @@ export class TeamManager {
       createdAt: Date.now(),
     };
     await fs.writeFile(this.getStatePath(config.name), JSON.stringify(state, null, 2));
+    console.log(`[TeamManager] Saved state file`);
 
     console.log(`Team "${config.name}" created successfully.`);
   }
@@ -150,8 +165,13 @@ export class TeamManager {
 
     // アクティブなエージェントの停止（将来実装）
     // 現在は単にディレクトリを削除
-    await fs.rm(teamPath, { recursive: true, force: true });
-    console.log(`Team "${teamName}" shutdown successfully.`);
+    try {
+      await fs.rm(teamPath, { recursive: true, force: true });
+      console.log(`Team "${teamName}" shutdown successfully.`);
+      console.log(`Team "${teamName}" deleted.`);
+    } catch (error) {
+      throw new Error(`Error deleting team: ${error}`);
+    }
   }
 
   getTeamPath(teamName: string): string {

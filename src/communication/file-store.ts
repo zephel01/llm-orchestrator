@@ -8,7 +8,7 @@ export interface Message {
   id: string;
   from: string;
   to: string | '*';
-  type: 'command' | 'report' | 'proposal' | 'approval' | 'broadcast' | 'response';
+  type: 'command' | 'report' | 'proposal' | 'approval' | 'broadcast' | 'response' | 'stop';
   content: any;
   timestamp: number;
   status: 'pending' | 'delivered' | 'read' | 'processed';
@@ -24,13 +24,29 @@ export interface CommunicationBus {
   releaseLock(resource: string, agentId: string): Promise<void>;
 }
 
+// StorageBackend 互換の拡張インターフェース
+export interface FileBackendConfig {
+  basePath?: string;
+  teamName?: string;
+}
+
 export class FileCommunicationBus implements CommunicationBus {
   private basePath: string;
   private teamName: string;
+  // Pub/Sub エミュレーション用
+  private subscriptions: Map<string, (message: Message) => void> = new Map();
+  // 状態管理用
+  private state: Map<string, any> = new Map();
 
   constructor(teamName: string, basePath?: string) {
     this.teamName = teamName;
     this.basePath = basePath || path.join(process.env.HOME || '.', '.llm-orchestrator', 'teams', teamName);
+  }
+
+  // StorageBackend 互換のコンストラクタ（ファクトリーから呼ばれる用）
+  static fromConfig(config: FileBackendConfig): FileCommunicationBus {
+    const teamName = config.teamName || 'default';
+    return new FileCommunicationBus(teamName, config.basePath);
   }
 
   async initialize(): Promise<void> {
@@ -50,17 +66,53 @@ export class FileCommunicationBus implements CommunicationBus {
     return path.join(this.basePath, 'messages', `${agentId}.json`);
   }
 
+  // StorageBackend 互換メソッド: writeMessage
+  async writeMessage(agentId: string, message: Message): Promise<void> {
+    await this.write(agentId, message);
+  }
+
+  // StorageBackend 互換メソッド: readMessages
+  async readMessages(agentId: string): Promise<Message[]> {
+    const messagePath = this.getMessagePath(agentId);
+    if (!existsSync(messagePath)) {
+      return [];
+    }
+
+    try {
+      const content = await fs.readFile(messagePath, 'utf-8');
+      if (!content || !content.trim()) {
+        return [];
+      }
+      const messages: Message[] = JSON.parse(content);
+      return messages;
+    } catch (error) {
+      console.error(`[FileCommunicationBus] Error reading messages from ${messagePath}:`, error);
+      return [];
+    }
+  }
+
   async write(targetId: string, message: Message): Promise<void> {
     const messagePath = this.getMessagePath(targetId);
 
     let messages: Message[] = [];
-    if (existsSync(messagePath)) {
-      const content = await fs.readFile(messagePath, 'utf-8');
-      messages = JSON.parse(content);
+    try {
+      if (existsSync(messagePath)) {
+        const content = await fs.readFile(messagePath, 'utf-8');
+        if (content.trim()) {
+          messages = JSON.parse(content);
+        }
+      }
+    } catch (error) {
+      console.error(`[FileCommunicationBus] Error reading message file: ${messagePath}`, error);
+      messages = [];
     }
 
     messages.push(message);
-    await fs.writeFile(messagePath, JSON.stringify(messages, null, 2));
+    try {
+      await fs.writeFile(messagePath, JSON.stringify(messages, null, 2));
+    } catch (error) {
+      console.error(`[FileCommunicationBus] Error writing message file: ${messagePath}`, error);
+    }
   }
 
   async broadcast(message: Message): Promise<void> {
@@ -77,7 +129,6 @@ export class FileCommunicationBus implements CommunicationBus {
 
   async read(agentId: string): Promise<Message[]> {
     const messagePath = this.getMessagePath(agentId);
-
     if (!existsSync(messagePath)) {
       return [];
     }
@@ -91,7 +142,8 @@ export class FileCommunicationBus implements CommunicationBus {
 
   async markRead(agentId: string, messageId: string): Promise<void> {
     const messagePath = this.getMessagePath(agentId);
-    if (!existsSync(messagePath)) return;
+    if (!existsSync(messagePath))
+      return;
 
     const content = await fs.readFile(messagePath, 'utf-8');
     const messages: Message[] = JSON.parse(content);
@@ -109,11 +161,40 @@ export class FileCommunicationBus implements CommunicationBus {
     await fs.writeFile(messagePath, JSON.stringify([], null, 2));
   }
 
+  // StorageBackend 互換メソッド: clearMessages
+  async clearMessages(agentId: string): Promise<void> {
+    await this.clear(agentId);
+  }
+
+  // StorageBackend 互換メソッド: subscribe (ファイルベースなのでエミュレーション)
+  async subscribe(channel: string, callback: (message: Message) => void): Promise<void> {
+    this.subscriptions.set(channel, callback);
+  }
+
+  // StorageBackend 互換メソッド: publish (ファイルベースなのでエミュレーション)
+  async publish(channel: string, message: Message): Promise<void> {
+    const callback = this.subscriptions.get(channel);
+    if (callback) {
+      // 非同期でコールバックを実行
+      setImmediate(() => callback(message));
+    }
+  }
+
+  // StorageBackend 互換メソッド: unsubscribe
+  async unsubscribe(channel: string): Promise<void> {
+    this.subscriptions.delete(channel);
+  }
+
   private getLockPath(resource: string): string {
     return path.join(process.env.HOME || '.', '.llm-orchestrator', 'locks', `${resource}.${this.teamName}.lock`);
   }
 
-  async acquireLock(resource: string, agentId: string, timeout: number = 60000): Promise<boolean> {
+  // StorageBackend 互換メソッド: acquireLock (TTL パラメータ追加)
+  async acquireLock(resource: string, holder: string, ttl: number = 60000): Promise<boolean> {
+    return await this.acquireLockInternal(resource, holder, ttl);
+  }
+
+  async acquireLockInternal(resource: string, agentId: string, timeout: number = 60000): Promise<boolean> {
     const lockPath = this.getLockPath(resource);
     const now = Date.now();
 
@@ -150,5 +231,48 @@ export class FileCommunicationBus implements CommunicationBus {
         await fs.unlink(lockPath);
       }
     }
+  }
+
+  // StorageBackend 互換メソッド: setState
+  async setState(key: string, value: any): Promise<void> {
+    const statePath = path.join(this.basePath, 'shared', `${key}.json`);
+    await fs.mkdir(path.dirname(statePath), { recursive: true });
+    await fs.writeFile(statePath, JSON.stringify(value, null, 2));
+    this.state.set(key, value);
+  }
+
+  // StorageBackend 互換メソッド: getState
+  async getState(key: string): Promise<any> {
+    // まずメモリ上の値を確認
+    if (this.state.has(key)) {
+      return this.state.get(key);
+    }
+
+    const statePath = path.join(this.basePath, 'shared', `${key}.json`);
+    if (!existsSync(statePath)) {
+      return null;
+    }
+
+    const content = await fs.readFile(statePath, 'utf-8');
+    const value = JSON.parse(content);
+    this.state.set(key, value);
+    return value;
+  }
+
+  // StorageBackend 互換メソッド: close
+  async close(): Promise<void> {
+    // 全てのサブスクリプションを解除
+    this.subscriptions.clear();
+    this.state.clear();
+  }
+
+  // チーム名を取得
+  getTeamName(): string {
+    return this.teamName;
+  }
+
+  // ベースパスを取得
+  getBasePath(): string {
+    return this.basePath;
   }
 }

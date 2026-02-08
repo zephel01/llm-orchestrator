@@ -1,7 +1,7 @@
 {
   "name": "llm-orchestrator",
-  "version": "0.1.0",
-  "description": "Multi-agent system for autonomous task execution with LLMs",
+  "version": "0.5.1",
+  "description": "Multi-agent system for autonomous task execution with LLMs. Support for local/remote LLM providers (Anthropic, OpenAI, Ollama, LM Studio, llama-server) with configurable base URLs.",
   "main": "dist/cli.js",
   "type": "module",
   "scripts": {
@@ -11,7 +11,13 @@
     "orchestrator": "node dist/cli.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:unit": "node tests/test.mjs",
-    "test:valkey": "node tests/test-valkey.mjs"
+    "test:valkey": "node tests/test-valkey.mjs",
+    "test:parallel": "node tests/test-parallel.mjs",
+    "test:providers": "node tests/test-providers.mjs",
+    "test:dependencies": "node tests/test-dependencies.mjs",
+    "test:progress": "node tests/test-progress.mjs",
+    "test:recovery": "node tests/test-recovery.mjs",
+    "test:phase4": "npm run test:dependencies && npm run test:progress && npm run test:recovery"
   },
   "bin": {
     "llm-orchestrator": "./dist/cli.js"

@@ -9,6 +9,287 @@ export interface ValkeyConfig {
   db?: number;
   password?: string;
   prefix?: string;
+  // Redlock 用の追加設定
+  redlock?: {
+    driftFactor?: number;
+    retryCount?: number;
+    retryDelay?: number;
+    retryJitter?: number;
+    automaticExtensionThreshold?: number;
+  };
+}
+
+export interface RedlockOptions {
+  driftFactor?: number;
+  retryCount?: number;
+  retryDelay?: number;
+  retryJitter?: number;
+  automaticExtensionThreshold?: number;
+}
+
+export interface LockInfo {
+  resource: string;
+  holder: string;
+  acquiredAt: number;
+  ttl: number;
+  extensionCount: number;
+}
+
+// Redlock 分散ロック実装
+export class Redlock {
+  private clients: Redis[];
+  private driftFactor: number;
+  private retryCount: number;
+  private retryDelay: number;
+  private retryJitter: number;
+  private automaticExtensionThreshold: number;
+  private activeLocks: Map<string, LockInfo> = new Map();
+  private extensionTimers: Map<string, NodeJS.Timeout> = new Map();
+
+  constructor(clients: Redis[], options: RedlockOptions = {}) {
+    if (clients.length === 0) {
+      throw new Error('Redlock requires at least one Redis client');
+    }
+
+    this.clients = clients;
+    this.driftFactor = options.driftFactor ?? 0.01;
+    this.retryCount = options.retryCount ?? 10;
+    this.retryDelay = options.retryDelay ?? 200;
+    this.retryJitter = options.retryJitter ?? 50;
+    this.automaticExtensionThreshold = options.automaticExtensionThreshold ?? 0.5;
+  }
+
+  /**
+   * 分散ロックを取得する
+   */
+  async acquireLock(
+    resource: string,
+    holder: string,
+    ttl: number
+  ): Promise<LockInfo | null> {
+    const lockValue = `${holder}:${Date.now()}:${Math.random().toString(36).substr(2, 9)}`;
+    const drift = Math.floor(this.driftFactor * ttl) + 2;
+
+    let attempts = 0;
+    while (attempts < this.retryCount) {
+      const startTime = Date.now();
+      let successes = 0;
+      const promises: Promise<'OK' | null>[] = [];
+
+      // 全クライアントでロック取得を試行
+      for (const client of this.clients) {
+        promises.push(
+          client.set(resource, lockValue, 'PX', ttl, 'NX')
+        );
+      }
+
+      const results = await Promise.all(promises);
+
+      // 成功した数をカウント
+      for (const result of results) {
+        if (result === 'OK') {
+          successes++;
+        }
+      }
+
+      const elapsedTime = Date.now() - startTime;
+      const validityTime = ttl - elapsedTime - drift;
+
+      // 過半数以上で成功し、有効時間が残っている場合
+      if (successes >= Math.floor(this.clients.length / 2) + 1 && validityTime > 0) {
+        const lockInfo: LockInfo = {
+          resource,
+          holder,
+          acquiredAt: Date.now(),
+          ttl,
+          extensionCount: 0,
+        };
+
+        // 自動延長を設定
+        this.setupAutomaticExtension(resource, lockValue, ttl);
+
+        return lockInfo;
+      }
+
+      // 失敗した場合、取得したロックを解放してリトライ
+      await this.unlockInternal(resource, lockValue);
+
+      // リトライ前に待機
+      const delay = this.retryDelay + Math.floor(Math.random() * this.retryJitter);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      attempts++;
+    }
+
+    return null;
+  }
+
+  /**
+   * ロックを解放する
+   */
+  async releaseLock(resource: string, holder: string): Promise<boolean> {
+    const lockValue = `${holder}:`;
+    return await this.unlockInternal(resource, lockValue);
+  }
+
+  /**
+   * ロックを延長する
+   */
+  async extendLock(
+    resource: string,
+    holder: string,
+    ttl: number
+  ): Promise<boolean> {
+    const lockValuePrefix = `${holder}:`;
+    let successes = 0;
+    const promises: Promise<unknown>[] = [];
+
+    const drift = Math.floor(this.driftFactor * ttl) + 2;
+    const startTime = Date.now();
+
+    for (const client of this.clients) {
+      const script = `
+        local value = redis.call("get", KEYS[1])
+        if value and string.sub(value, 1, #ARGV[1]) == ARGV[1] then
+          redis.call("pexpire", KEYS[1], ARGV[2])
+          return 1
+        else
+          return 0
+        end
+      `;
+      promises.push(
+        client.eval(script, 1, resource, lockValuePrefix, ttl)
+      );
+    }
+
+    const results = await Promise.all(promises);
+
+    for (const result of results) {
+      if (result === 1) {
+        successes++;
+      }
+    }
+
+    const elapsedTime = Date.now() - startTime;
+    const validityTime = ttl - elapsedTime - drift;
+
+    if (successes >= Math.floor(this.clients.length / 2) + 1 && validityTime > 0) {
+      // 延長成功
+      const key = `${resource}:${lockValuePrefix}`;
+      if (this.activeLocks.has(key)) {
+        const lockInfo = this.activeLocks.get(key)!;
+        lockInfo.extensionCount++;
+        this.activeLocks.set(key, lockInfo);
+      }
+
+      // 自動延長タイマーを再設定
+      this.setupAutomaticExtension(resource, lockValuePrefix, ttl);
+
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * ロックの所有権を確認する
+   */
+  async isLockedBy(resource: string, holder: string): Promise<boolean> {
+    const lockValuePrefix = `${holder}:`;
+
+    for (const client of this.clients) {
+      const value = await client.get(resource);
+      if (value && value.startsWith(lockValuePrefix)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * 自動延長をセットアップする
+   */
+  private setupAutomaticExtension(resource: string, lockValue: string, ttl: number): void {
+    const key = `${resource}:${lockValue}`;
+
+    // 既存のタイマーをクリア
+    const existingTimer = this.extensionTimers.get(key);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    // 閾値に達した時間に延長を試みる
+    const delay = Math.floor(ttl * this.automaticExtensionThreshold);
+    const timer = setTimeout(async () => {
+      try {
+        const holder = lockValue.split(':')[0];
+        const success = await this.extendLock(resource, holder, ttl);
+
+        if (!success) {
+          // 延長失敗の場合、ロック情報をクリア
+          this.activeLocks.delete(key);
+          this.extensionTimers.delete(key);
+        }
+      } catch (error) {
+        console.error('[Redlock] Extension failed:', error);
+        this.activeLocks.delete(key);
+        this.extensionTimers.delete(key);
+      }
+    }, delay);
+
+    this.extensionTimers.set(key, timer);
+  }
+
+  /**
+   * 内部ロック解放（Lua スクリプトを使用）
+   */
+  private async unlockInternal(resource: string, lockValuePrefix: string): Promise<boolean> {
+    let successes = 0;
+
+    const script = `
+      if redis.call("get", KEYS[1]) and string.sub(redis.call("get", KEYS[1]), 1, #ARGV[1]) == ARGV[1] then
+        return redis.call("del", KEYS[1])
+      else
+        return 0
+      end
+    `;
+
+    const promises = this.clients.map(client =>
+      client.eval(script, 1, resource, lockValuePrefix)
+    );
+
+    const results = await Promise.all(promises);
+
+    for (const result of results) {
+      if (result === 1) {
+        successes++;
+      }
+    }
+
+    // タイマーをクリア
+    const key = `${resource}:${lockValuePrefix}`;
+    const timer = this.extensionTimers.get(key);
+    if (timer) {
+      clearTimeout(timer);
+      this.extensionTimers.delete(key);
+    }
+    this.activeLocks.delete(key);
+
+    return successes >= Math.floor(this.clients.length / 2) + 1;
+  }
+
+  /**
+   * 全てのロックを解放する
+   */
+  async releaseAllLocks(holder: string): Promise<void> {
+    const locks = Array.from(this.activeLocks.values());
+
+    for (const lock of locks) {
+      if (lock.holder === holder) {
+        await this.releaseLock(lock.resource, lock.holder);
+      }
+    }
+  }
 }
 
 export class ValkeyBackend implements StorageBackend {
@@ -17,6 +298,7 @@ export class ValkeyBackend implements StorageBackend {
   private publisher: Redis;
   private prefix: string;
   private subscriptions: Map<string, (message: Message) => void> = new Map();
+  private redlock?: Redlock;
 
   constructor(config: ValkeyConfig = {}) {
     const {
@@ -25,6 +307,7 @@ export class ValkeyBackend implements StorageBackend {
       db = 0,
       password,
       prefix = 'agent-team',
+      redlock,
     } = config;
 
     this.prefix = prefix;
@@ -43,6 +326,11 @@ export class ValkeyBackend implements StorageBackend {
     this.client = new Redis(redisOptions);
     this.subscriber = new Redis(redisOptions);
     this.publisher = new Redis(redisOptions);
+
+    // Redlock を初期化（オプション）
+    if (redlock) {
+      this.redlock = new Redlock([this.client], redlock);
+    }
 
     // エラーハンドリング
     this.client.on('error', (err) => console.error('[Valkey Client] Error:', err));
@@ -128,6 +416,13 @@ export class ValkeyBackend implements StorageBackend {
   }
 
   async acquireLock(resource: string, holder: string, ttl: number = 60000): Promise<boolean> {
+    // Redlock が利用可能な場合は Redlock を使用
+    if (this.redlock) {
+      const lockInfo = await this.redlock.acquireLock(this.lockKey(resource), holder, ttl);
+      return lockInfo !== null;
+    }
+
+    // 基本的なロック取得
     const key = this.lockKey(resource);
     const lockValue = `${holder}:${Date.now()}`;
 
@@ -137,6 +432,13 @@ export class ValkeyBackend implements StorageBackend {
   }
 
   async releaseLock(resource: string, holder: string): Promise<void> {
+    // Redlock が利用可能な場合は Redlock を使用
+    if (this.redlock) {
+      await this.redlock.releaseLock(this.lockKey(resource), holder);
+      return;
+    }
+
+    // 基本的なロック解放
     const key = this.lockKey(resource);
     const lockValue = `${holder}:`;
 
@@ -171,6 +473,12 @@ export class ValkeyBackend implements StorageBackend {
   }
 
   async close(): Promise<void> {
+    // Redlock の全ロックを解放
+    if (this.redlock) {
+      // 注: Redlock の全ロック解放は現在の実装では holder が必要
+      // 将来的にはホルダー情報を追跡して解放する
+    }
+
     // 全てのサブスクリプションを解除
     for (const channel of this.subscriptions.keys()) {
       await this.subscriber.unsubscribe(channel);

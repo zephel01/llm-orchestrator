@@ -38,6 +38,7 @@ coverage/
 
 # Local data (development files)
 .llm-orchestrator/
+.llm-orchestrator-test/
 .cache/
 
 # Logs

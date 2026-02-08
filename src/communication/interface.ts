@@ -2,7 +2,7 @@
 
 import { Message } from './file-store.js';
 
-export type { Message };
+export { Message };
 
 
 export interface StorageBackend {
