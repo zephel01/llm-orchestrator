@@ -3,6 +3,9 @@
 import Redis from 'ioredis';
 import { StorageBackend, Message } from './interface.js';
 
+// Redisインスタンスの型エイリアス
+type RedisClient = Redis.Redis;
+
 export interface ValkeyConfig {
   host?: string;
   port?: number;
@@ -37,7 +40,7 @@ export interface LockInfo {
 
 // Redlock 分散ロック実装
 export class Redlock {
-  private clients: Redis[];
+  private clients: RedisClient[];
   private driftFactor: number;
   private retryCount: number;
   private retryDelay: number;
@@ -46,7 +49,7 @@ export class Redlock {
   private activeLocks: Map<string, LockInfo> = new Map();
   private extensionTimers: Map<string, NodeJS.Timeout> = new Map();
 
-  constructor(clients: Redis[], options: RedlockOptions = {}) {
+  constructor(clients: RedisClient[], options: RedlockOptions = {}) {
     if (clients.length === 0) {
       throw new Error('Redlock requires at least one Redis client');
     }
@@ -293,9 +296,9 @@ export class Redlock {
 }
 
 export class ValkeyBackend implements StorageBackend {
-  private client: Redis;
-  private subscriber: Redis;
-  private publisher: Redis;
+  private client: RedisClient;
+  private subscriber: RedisClient;
+  private publisher: RedisClient;
   private prefix: string;
   private subscriptions: Map<string, (message: Message) => void> = new Map();
   private redlock?: Redlock;
@@ -333,9 +336,9 @@ export class ValkeyBackend implements StorageBackend {
     }
 
     // エラーハンドリング
-    this.client.on('error', (err) => console.error('[Valkey Client] Error:', err));
-    this.subscriber.on('error', (err) => console.error('[Valkey Subscriber] Error:', err));
-    this.publisher.on('error', (err) => console.error('[Valkey Publisher] Error:', err));
+    this.client.on('error', (err: Error) => console.error('[Valkey Client] Error:', err));
+    this.subscriber.on('error', (err: Error) => console.error('[Valkey Subscriber] Error:', err));
+    this.publisher.on('error', (err: Error) => console.error('[Valkey Publisher] Error:', err));
   }
 
   async initialize(): Promise<void> {
@@ -346,7 +349,7 @@ export class ValkeyBackend implements StorageBackend {
     ]);
 
     // Pub/Sub リスナーを設定
-    this.subscriber.on('message', (channel, data) => {
+    this.subscriber.on('message', (channel: string, data: string) => {
       const callback = this.subscriptions.get(channel);
       if (callback) {
         try {
@@ -389,7 +392,7 @@ export class ValkeyBackend implements StorageBackend {
     const messages = await this.client.lrange(key, 0, -1);
 
     // 逆順にする（LPUSH したので古い順にする）
-    return messages.reverse().map(m => JSON.parse(m));
+    return messages.reverse().map((m: string) => JSON.parse(m));
   }
 
   async clearMessages(agentId: string): Promise<void> {

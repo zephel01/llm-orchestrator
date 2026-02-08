@@ -174,18 +174,24 @@ export class DAGVisualizer {
     // Top border
     lines.push('┌' + '─'.repeat(maxWidth - 2) + '┐');
 
-    // Task ID and status
-    lines.push('│ ' + statusColor + ' ' + statusText + ' '.repeat(maxWidth - 6 - statusText.length) + '│');
-
-    // Description (may wrap)
-    const descLines = this.wrapText(truncatedDesc, maxWidth - 4);
-    for (const line of descLines) {
-      lines.push('│ ' + line.padEnd(maxWidth - 4) + ' │');
+    // Task ID and status (only if showStatus is true)
+    if (this.options.showStatus) {
+      lines.push('│ ' + statusColor + ' ' + statusText + ' '.repeat(maxWidth - 6 - statusText.length) + '│');
+    } else {
+      lines.push('│ ' + truncatedDesc.padEnd(maxWidth - 4) + ' │');
     }
 
-    // Progress bar (if in progress)
-    if (subtask.status === TaskStatus.IN_PROGRESS && subtask.progress !== undefined) {
-      const progressStr = `[${this.generateProgressBar(subtask.progress, maxWidth - 8)}]`;
+    // Description (may wrap) - only if showStatus is true
+    if (this.options.showStatus) {
+      const descLines = this.wrapText(truncatedDesc, maxWidth - 4);
+      for (const line of descLines) {
+        lines.push('│ ' + line.padEnd(maxWidth - 4) + ' │');
+      }
+    }
+
+    // Progress bar (if in progress and showStatus is true)
+    if (this.options.showStatus && subtask.status === TaskStatus.IN_PROGRESS && subtask.progress !== undefined) {
+      const progressStr = `[${this.generateProgressBar(subtask.progress, maxWidth - 12)} ${subtask.progress}%]`;
       lines.push('│ ' + progressStr.padEnd(maxWidth - 4) + ' │');
     }
 

@@ -2,8 +2,8 @@
  * Tests for DAG Visualizer
  */
 
-import { DAGVisualizer } from '../src/tui/dag-visualizer.js';
-import { SubtaskWithDependencies, TaskStatus } from '../src/dependencies/types.js';
+import { DAGVisualizer } from '../src/tui/dag-visualizer';
+import { SubtaskWithDependencies, TaskStatus } from '../src/dependencies/types';
 
 // Test data
 const testSubtasks: SubtaskWithDependencies[] = [
