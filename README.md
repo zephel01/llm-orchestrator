@@ -200,102 +200,44 @@ export OPENAI_API_KEY="your-api-key"
 ```
 
 ### 3. Test Provider
+205:npm run orchestrator test-provider anthropic
+207:npm run orchestrator test-provider openai
+209:npm run orchestrator test-provider ollama
 
-```bash
-npm run orchestrator test-provider anthropic
-# or
-npm run orchestrator test-provider openai
-# or
-npm run orchestrator test-provider ollama
-```
+### 4. TUI Tests
+210:npm run test:tui
+211:npm run tui:demo
+212:npm run tui -- --debug
+213:npm run tui -- --verbose
 
-### 4. Create a Team
+### 5. Run Full Test Suite
+215:npm test
+216:npm test -- --coverage
 
-```bash
-npm run orchestrator create my-team --provider anthropic
-```
+### 6. Run Specific Tests
+217:npm run test:unit
+218:npm run test:dependencies
+219:npm run test:progress
+220:npm run test:recovery
 
-### 5. Run a Task
+# Test Provider
+246:llm-orchestrator test-provider <type> [options]
+  - ✅ Test, security, and cost criteria evaluation
 
-```bash
-npm run orchestrator run my-team "Create a simple Python script that calculates fibonacci numbers"
-```
+# TUI Tests
+247:npm run test:tui
+  - Run all TUI component tests
+  - See [TUI Tests](tests/TUI_TESTS_README.md) for details
 
-## CLI Commands
+# TUI Demo
+248:npm run tui:demo
+  - Run TUI dashboard demo without Jest
+  - Useful for manual testing and visual verification
 
-```bash
-# Initialize environment
-llm-orchestrator init
-
-# Create a team
-llm-orchestrator create <name> [options]
-  -p, --provider <type>  LLM provider (anthropic, openai, ollama)
-  -m, --model <name>     Model name
-
-# List teams
-llm-orchestrator list
-
-# Delete a team
-llm-orchestrator delete <name>
-
-# Run a task
-llm-orchestrator run <team-name> <task> [options]
-  -d, --dir <path>       Working directory
-
-# Test provider
-llm-orchestrator test-provider <type> [options]
-  -m, --model <name>     Model name
-  -u, --base-url <url>   Base URL (for local providers)
-```
-
-**Available Providers**: `anthropic`, `openai`, `ollama`, `lmstudio`, `llama-server`
-
-## Architecture
-
-```
-src/
-├── providers/           # LLM provider abstraction
-│   ├── interface.ts    # Common interface
-│   ├── anthropic.ts    # Anthropic adapter
-│   ├── openai.ts       # OpenAI adapter
-│   ├── ollama.ts       # Ollama adapter
-│   ├── lm-studio.ts    # LM Studio adapter
-│   ├── llama-server.ts  # llama-server adapter
-│   └── factory.ts      # Provider factory
-├── team-manager/       # Team lifecycle management
-│   └── index.ts
-├── agent-kernel/       # Agent execution environment
-│   └── index.ts
-├── communication/      # Messaging system (file-based in Phase 1)
-│   ├── interface.ts    # Storage abstraction
-│   ├── file-store.ts   # File backend
-│   └── valkey.ts      # Valkey backend (Phase 2)
-├── agents/             # Agent implementations
-│   ├── lead.ts         # Lead agent
-│   ├── teammate.ts     # Teammate agent
-│   ├── agent-manager.ts # Agent manager
-│   └── index.ts
-└── cli.ts              # CLI entry point
-```
-
-## Phase 1 Features (Current)
-
-- ✅ File-based messaging system
-- ✅ LLM provider abstraction (Anthropic, OpenAI, Ollama)
-- ✅ Team Manager (basic lifecycle)
-- ✅ Agent Kernel (context management)
-- ✅ Lead Agent (single agent with tool execution)
-
-## Phase 2 Features (Completed)
-
-- ✅ Valkey backend for communication (Redis-compatible)
-- ✅ Parallel teammate execution
-- ✅ Redlock distributed locking
-
-## Phase 3 Features (Completed)
-
-- ✅ Plan approval workflow
-- ✅ Test, security, and cost criteria evaluation
+# Coverage
+250:npm test -- --coverage
+  - Generate coverage report
+  - View at ./coverage/lcov-report/index.html
 - ✅ Local LLM providers (LM Studio, llama-server)
 
 ## Phase 4 Features (Completed)
