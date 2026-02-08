@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
 import { TaskStatus, SubtaskWithDependencies } from '../dependencies/types.js';
+import { useBackendMonitoring } from './useBackendMonitoring.js';
 
 // Dashboard Props
 interface DashboardProps {
@@ -150,25 +151,45 @@ const LogStream: React.FC<{ logs: string[]; debug?: boolean; verbose?: boolean }
 // Main Dashboard Component
 export const Dashboard: React.FC<DashboardProps> = ({
   taskName,
-  subtasks,
+  subtasks: initialSubtasks,
   onExit,
   debug = false,
-  verbose = false
+  verbose = false,
+  teamName
 }) => {
   const { exit } = useApp();
-  const initialLogs = [
-    '[00:00:00] Dashboard initialized',
-    `[00:00:01] Task: ${taskName}`,
-    `[00:00:02] Monitoring ${subtasks.length} subtasks`,
-  ];
-  if (debug) {
-    initialLogs.push(`[00:00:03] Debug mode: ${debug}`);
-  }
-  if (verbose) {
-    initialLogs.push(`[00:00:04] Verbose mode: ${verbose}`);
-  }
+  const { state: backendState, addLog: addBackendLog } = useBackendMonitoring({
+    teamName,
+    debug,
+  });
 
-  const [logs, setLogs] = useState<string[]>(initialLogs);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [subtasks, setSubtasks] = useState<SubtaskWithDependencies[]>(initialSubtasks);
+
+  // Initialize logs on mount
+  useEffect(() => {
+    const initialLogs = [
+      '[00:00:00] Dashboard initialized',
+      `[00:00:01] Task: ${taskName}`,
+      `[00:00:02] Monitoring ${subtasks.length} subtasks`,
+    ];
+    if (debug) {
+      initialLogs.push(`[00:00:03] Debug mode: ${debug}`);
+    }
+    if (verbose) {
+      initialLogs.push(`[00:00:04] Verbose mode: ${verbose}`);
+    }
+    if (teamName) {
+      initialLogs.push(`[00:00:05] Team: ${teamName}`);
+    }
+    setLogs(initialLogs);
+  }, [taskName, subtasks.length, debug, verbose, teamName]);
+
+  // Sync backend logs to dashboard logs
+  useEffect(() => {
+    // Backend logs are added via addBackendLog hook
+    // This effect is kept for future enhancements
+  }, [backendState.lastUpdate]);
 
   // Handle keyboard input
   useInput((input, key) => {
