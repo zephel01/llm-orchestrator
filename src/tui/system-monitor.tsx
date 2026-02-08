@@ -123,58 +123,37 @@ export const SystemMonitor: React.FC<SystemMonitorProps> = ({ debug = false }) =
   return (
     <Box
       flexDirection="column"
-      borderColor="cyan"
       paddingX={1}
       flexGrow={1}
     >
-      <Text key="sys-res-header" bold color="cyan">System Resources</Text>
-      <Box key="sys-res-body" marginTop={1}>
-        {/* CPU */}
-        <Box key="cpu-section" flexDirection="column" marginBottom={1}>
-          <Text key="cpu-label">
-            <Text key="cpu-label-text" color="magenta">CPU:</Text> {resources.cpu.usage}%
-          </Text>
-          <Box key="cpu-bar-box" marginLeft={1}>
-            <Text key="cpu-bar-text">{generateUsageBar(resources.cpu.usage, 15)}</Text>
-          </Box>
-          <Text key="cpu-cores" dimColor>
-            {' '}{resources.cpu.cores} cores
-          </Text>
-        </Box>
+      <Text bold color="cyan">System Resources</Text>
 
-        {/* Memory */}
-        <Box key="memory-section" flexDirection="column" marginBottom={1}>
-          <Text key="memory-label">
-            <Text key="memory-label-text" color="blue">Memory:</Text> {resources.memory.percentage}%
-          </Text>
-          <Box key="memory-bar-box" marginLeft={1}>
-            <Text key="memory-bar-text">{generateUsageBar(resources.memory.percentage, 15)}</Text>
-          </Box>
-          <Text key="memory-info" dimColor>
-            {' '}{formatBytes(resources.memory.used)} / {formatBytes(resources.memory.total)}
-          </Text>
-        </Box>
+      <Text>
+        <Text color="magenta">CPU:</Text> {resources.cpu.usage}%
+      </Text>
+      <Text>  {generateUsageBar(resources.cpu.usage, 15)}</Text>
+      <Text dimColor>  {resources.cpu.cores} cores</Text>
 
-        {/* GPU (if available) */}
-        {resources.gpu && (
-          <Box key="gpu-section" flexDirection="column" marginBottom={1}>
-            <Text key="gpu-label">
-              <Text key="gpu-label-text" color="green">GPU:</Text> {resources.gpu.model.substring(0, 15)}
+      <Text>
+        <Text color="blue">Memory:</Text> {resources.memory.percentage}%
+      </Text>
+      <Text>  {generateUsageBar(resources.memory.percentage, 15)}</Text>
+      <Text dimColor>  {formatBytes(resources.memory.used)} / {formatBytes(resources.memory.total)}</Text>
+
+      {resources.gpu && (
+        <>
+          <Text>
+            <Text color="green">GPU:</Text> {resources.gpu.model.substring(0, 15)}
+          </Text>
+          <Text>  {generateUsageBar(resources.gpu.usage, 15)}</Text>
+          <Text dimColor>  {resources.gpu.usage}%</Text>
+          {resources.gpu.memory && (
+            <Text dimColor>
+               | VRAM: {formatBytes(resources.gpu.memory.used)} / {formatBytes(resources.gpu.memory.total)}
             </Text>
-            <Box key="gpu-bar-box" marginLeft={1}>
-              <Text key="gpu-bar-text">{generateUsageBar(resources.gpu.usage, 15)}</Text>
-            </Box>
-            <Text key="gpu-usage" dimColor>
-              {' '}{resources.gpu.usage}%
-            </Text>
-            {resources.gpu.memory && (
-              <Text key="gpu-vram" dimColor>
-                {' | VRAM: '}{formatBytes(resources.gpu.memory.used)} / {formatBytes(resources.gpu.memory.total)}
-              </Text>
-            )}
-          </Box>
-        )}
-      </Box>
+          )}
+        </>
+      )}
     </Box>
   );
 };
