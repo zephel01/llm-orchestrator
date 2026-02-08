@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
 import { TaskStatus, SubtaskWithDependencies } from '../dependencies/types.js';
+import { SystemMonitor } from './system-monitor.js';
 
 // Dashboard Props
 interface DashboardProps {
@@ -28,6 +29,7 @@ const AgentPanel: React.FC<{
       borderColor="blue"
       paddingX={1}
       flexGrow={1}
+      minWidth={25}
     >
       <Text bold color="blue">Agent: {agentId}</Text>
       <Box marginTop={1}>
@@ -35,15 +37,15 @@ const AgentPanel: React.FC<{
           <Text dimColor>No subtasks assigned</Text>
         ) : (
           filteredSubtasks.map((subtask) => (
-            <Box key={subtask.id} marginBottom={1}>
-              <Text>{subtask.description}</Text>
+            <Box key={subtask.id} marginBottom={1} flexDirection="column">
+              <Text>{subtask.description.substring(0, 20)}</Text>
               <Box marginTop={0}>
                 <Text color={getStatusColor(subtask.status)}>
                   Status: {subtask.status}
                 </Text>
                 {subtask.status === TaskStatus.IN_PROGRESS && subtask.progress !== undefined && (
                   <Box marginLeft={1}>
-                    <Text>[{generateProgressBar(subtask.progress)}] {subtask.progress}%</Text>
+                    <Text>[{generateProgressBar(subtask.progress, 8)}] {subtask.progress}%</Text>
                   </Box>
                 )}
               </Box>
@@ -74,7 +76,7 @@ function getStatusColor(status: TaskStatus): string {
 }
 
 // Progress bar generator
-function generateProgressBar(progress: number, width: number = 20): string {
+function generateProgressBar(progress: number, width: number = 15): string {
   const filled = Math.round((progress / 100) * width);
   const empty = width - filled;
   return '█'.repeat(filled) + '░'.repeat(empty);
@@ -82,7 +84,7 @@ function generateProgressBar(progress: number, width: number = 20): string {
 
 // Log Stream Component
 const LogStream: React.FC<{ logs: string[] }> = ({ logs }) => {
-  const visibleLogs = logs.slice(-10); // Show last 10 logs
+  const visibleLogs = logs.slice(-8); // Show last 8 logs
 
   return (
     <Box
@@ -99,7 +101,7 @@ const LogStream: React.FC<{ logs: string[] }> = ({ logs }) => {
         ) : (
           visibleLogs.map((log, i) => (
             <Box key={i}>
-              <Text dimColor>{log}</Text>
+              <Text dimColor>{log.substring(0, 70)}</Text>
             </Box>
           ))
         )}
@@ -175,7 +177,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <Box marginBottom={1}>
         <Text>
           <Text color="green">Progress: </Text>
-          <Text>[{generateProgressBar(progressPercent)}] {progressPercent}%</Text>
+          <Text>[{generateProgressBar(progressPercent, 30)}] {progressPercent}%</Text>
         </Text>
         <Text dimColor>
           {' '}({completedSubtasks}/{subtasks.length} subtasks completed)
@@ -183,18 +185,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </Box>
 
       {/* Agent Panels Grid */}
-      <Box marginBottom={1} width="100%">
+      <Box marginBottom={1} flexDirection="row" width="100%">
         {agentIds.length === 0 ? (
           <Box borderStyle="single" borderColor="gray" paddingX={1} width="100%">
             <Text dimColor>No agents assigned yet</Text>
           </Box>
         ) : (
-          <Box flexDirection="row" width="100%">
-            {agentIds.map(agentId => (
-              <AgentPanel key={agentId} agentId={agentId} subtasks={subtasks} />
-            ))}
-          </Box>
+          agentIds.map(agentId => (
+            <AgentPanel key={agentId} agentId={agentId} subtasks={subtasks} />
+          ))
         )}
+      </Box>
+
+      {/* System Monitor */}
+      <Box marginBottom={1} width="100%">
+        <SystemMonitor />
       </Box>
 
       {/* Log Stream */}
