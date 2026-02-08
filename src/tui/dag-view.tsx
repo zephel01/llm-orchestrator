@@ -22,7 +22,7 @@ export const DAGView: React.FC<DAGViewProps> = ({
   return (
     <Box flexDirection="column" marginBottom={1}>
       {dag.lines.map((line, index) => (
-        <Text key={`dag-line-${index}`}>{line}</Text>
+        <Text key={`dag-line-${index}-${line.substring(0, 10)}`}>{line}</Text>
       ))}
     </Box>
   );

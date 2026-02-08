@@ -42,19 +42,19 @@ const AgentPanel: React.FC<{
         ) : (
           filteredSubtasks.map((subtask) => (
             <Box key={`agent-${agentId}-task-${subtask.id}`} marginBottom={1} flexDirection="column">
-              <Text>{subtask.description.substring(0, 20)}</Text>
-              <Box marginTop={0}>
-                <Text color={getStatusColor(subtask.status)}>
+              <Text key={`desc-${subtask.id}`}>{subtask.description.substring(0, 20)}</Text>
+              <Box key={`status-box-${subtask.id}`} marginTop={0}>
+                <Text key={`status-${subtask.id}`} color={getStatusColor(subtask.status)}>
                   Status: {subtask.status}
                 </Text>
                 {subtask.status === TaskStatus.IN_PROGRESS && subtask.progress !== undefined && (
-                  <Box marginLeft={1}>
-                    <Text>[{generateProgressBar(subtask.progress, 8)}] {subtask.progress}%</Text>
+                  <Box key={`progress-box-${subtask.id}`} marginLeft={1}>
+                    <Text key={`progress-${subtask.id}`}>[{generateProgressBar(subtask.progress, 8)}] {subtask.progress}%</Text>
                   </Box>
                 )}
               </Box>
               {debug && (
-                <Text dimColor>
+                <Text key={`debug-${subtask.id}`} dimColor>
                   ID: {subtask.id} | Deps: {subtask.dependencies.length}
                 </Text>
               )}
@@ -103,24 +103,24 @@ const LogStream: React.FC<{ logs: string[]; debug?: boolean; verbose?: boolean }
       paddingX={1}
       flexGrow={1}
     >
-      <Text bold color="gray">
+      <Text key="log-header" bold color="gray">
         Log Stream (Press q to quit)
         {debug && ' | DEBUG'}
         {verbose && ' | VERBOSE'}
       </Text>
-      <Box marginTop={1}>
+      <Box key="log-body" marginTop={1}>
         {visibleLogs.length === 0 ? (
-          <Text dimColor>No logs yet</Text>
+          <Text key="no-logs" dimColor>No logs yet</Text>
         ) : (
           visibleLogs.map((log, i) => (
-            <Box key={`log-${i}`}>
-              <Text dimColor>{log.substring(0, verbose ? 120 : 70)}</Text>
+            <Box key={`log-entry-${i}`}>
+              <Text key={`log-text-${i}-${i}`}>{log.substring(0, verbose ? 120 : 70)}</Text>
             </Box>
           ))
         )}
       </Box>
       {debug && (
-        <Box marginTop={1}>
+        <Box key="log-debug" marginTop={1}>
           <Text dimColor>Debug: {logs.length} total logs</Text>
         </Box>
       )}
@@ -137,13 +137,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
   verbose = false
 }) => {
   const { exit } = useApp();
-  const [logs, setLogs] = useState<string[]>([
+  const initialLogs = [
     '[00:00:00] Dashboard initialized',
     `[00:00:01] Task: ${taskName}`,
     `[00:00:02] Monitoring ${subtasks.length} subtasks`,
-    debug ? `[00:00:03] Debug mode: ${debug}` : '',
-    verbose ? `[00:00:04] Verbose mode: ${verbose}` : '',
-  ].filter(Boolean));
+  ];
+  if (debug) {
+    initialLogs.push(`[00:00:03] Debug mode: ${debug}`);
+  }
+  if (verbose) {
+    initialLogs.push(`[00:00:04] Verbose mode: ${verbose}`);
+  }
+
+  const [logs, setLogs] = useState<string[]>(initialLogs);
 
   // Handle keyboard input
   useInput((input, key) => {
@@ -197,27 +203,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
   return (
     <Box flexDirection="column" paddingX={1}>
       {/* Header */}
-      <Box marginBottom={1}>
-        <Text bold color="blue">LLM Orchestrator Dashboard</Text>
-        <Text dimColor> | Task: {taskName}</Text>
+      <Box key="header" marginBottom={1}>
+        <Text key="header-title" bold color="blue">LLM Orchestrator Dashboard</Text>
+        <Text key="header-task" dimColor> | Task: {taskName}</Text>
       </Box>
 
       {/* Progress Bar */}
-      <Box marginBottom={1}>
-        <Text>
-          <Text color="green">Progress: </Text>
-          <Text>[{generateProgressBar(progressPercent, 30)}] {progressPercent}%</Text>
+      <Box key="progress-section" marginBottom={1}>
+        <Text key="progress-label">
+          <Text key="progress-label-text" color="green">Progress: </Text>
+          <Text key="progress-bar">[{generateProgressBar(progressPercent, 30)}] {progressPercent}%</Text>
         </Text>
-        <Text dimColor>
+        <Text key="progress-info" dimColor>
           {' '}({completedSubtasks}/{subtasks.length} subtasks completed)
         </Text>
       </Box>
 
       {/* Agent Panels Grid */}
-      <Box marginBottom={1} flexDirection="row" width="100%">
+      <Box key="agents-grid" marginBottom={1} flexDirection="row" width="100%">
         {agentIds.length === 0 ? (
-          <Box borderStyle="single" borderColor="gray" paddingX={1} width="100%">
-            <Text dimColor>No agents assigned yet</Text>
+          <Box key="no-agents" borderStyle="single" borderColor="gray" paddingX={1} width="100%">
+            <Text key="no-agents-text" dimColor>No agents assigned yet</Text>
           </Box>
         ) : (
           agentIds.map(agentId => (
@@ -227,7 +233,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </Box>
 
       {/* System Monitor */}
-      <Box marginBottom={1} width="100%">
+      <Box key="sys-monitor" marginBottom={1} width="100%">
         <SystemMonitor debug={debug} />
       </Box>
 
