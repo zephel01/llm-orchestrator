@@ -277,25 +277,6 @@ src/
 │   └── index.ts
 └── cli.ts              # CLI entry point
 ```
-src/
-├── providers/           # LLM provider abstraction
-│   ├── interface.ts    # Common interface
-│   ├── anthropic.ts    # Anthropic adapter
-│   ├── openai.ts       # OpenAI adapter
-│   ├── ollama.ts       # Ollama adapter
-│   └── factory.ts      # Provider factory
-├── team-manager/       # Team lifecycle management
-│   └── index.ts
-├── agent-kernel/       # Agent execution environment
-│   └── index.ts
-├── communication/      # Messaging system (file-based in Phase 1)
-│   ├── interface.ts    # Storage abstraction
-│   ├── file-store.ts  # File backend
-│   └── valkey.ts      # Valkey backend (Phase 2)
-├── agents/             # Agent implementations
-│   └── lead.ts         # Lead agent
-└── cli.ts              # CLI entry point
-```
 
 ## Phase 1 Features (Current)
 

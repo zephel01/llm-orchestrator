@@ -276,26 +276,6 @@ src/
 │   └── index.ts
 └── cli.ts              # CLIエントリーポイント
 ```
-```
-src/
-├── providers/           # LLMプロバイダーの抽象化
-│   ├── interface.ts    # 共通インターフェース
-│   ├── anthropic.ts    # Anthropicアダプター
-│   ├── openai.ts       # OpenAIアダプター
-│   ├── ollama.ts       # Ollamaアダプター
-│   └── factory.ts      # プロバイダーファクトリー
-├── team-manager/       # チームライフサイクル管理
-│   └── index.ts
-├── agent-kernel/       # エージェント実行環境
-│   └── index.ts
-├── communication/      # メッセージングシステム（フェーズ1はファイルベース）
-│   ├── interface.ts    # ストレージ抽象化
-│   ├── file-store.ts  # ファイルバックエンド
-│   └── valkey.ts      # Valkeyバックエンド（フェーズ2）
-├── agents/             # エージェントの実装
-│   └── lead.ts         # リードエージェント
-└── cli.ts              # CLIエントリーポイント
-```
 
 ## フェーズ1の機能（現在）
 
