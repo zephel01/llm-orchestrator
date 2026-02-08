@@ -13,13 +13,16 @@ interface DashboardProps {
   taskName: string;
   subtasks: SubtaskWithDependencies[];
   onExit?: () => void;
+  debug?: boolean;
+  verbose?: boolean;
 }
 
 // Agent Panel Component
 const AgentPanel: React.FC<{
   agentId: string;
   subtasks: SubtaskWithDependencies[];
-}> = ({ agentId, subtasks }) => {
+  debug?: boolean;
+}> = ({ agentId, subtasks, debug = false }) => {
   const filteredSubtasks = subtasks.filter(st => st.assignedTo === agentId);
 
   return (
@@ -32,12 +35,13 @@ const AgentPanel: React.FC<{
       minWidth={25}
     >
       <Text bold color="blue">Agent: {agentId}</Text>
+      {debug && <Text dimColor>Tasks: {filteredSubtasks.length}</Text>}
       <Box marginTop={1}>
         {filteredSubtasks.length === 0 ? (
           <Text dimColor>No subtasks assigned</Text>
         ) : (
           filteredSubtasks.map((subtask) => (
-            <Box key={subtask.id} marginBottom={1} flexDirection="column">
+            <Box key={`agent-${agentId}-task-${subtask.id}`} marginBottom={1} flexDirection="column">
               <Text>{subtask.description.substring(0, 20)}</Text>
               <Box marginTop={0}>
                 <Text color={getStatusColor(subtask.status)}>
@@ -49,6 +53,11 @@ const AgentPanel: React.FC<{
                   </Box>
                 )}
               </Box>
+              {debug && (
+                <Text dimColor>
+                  ID: {subtask.id} | Deps: {subtask.dependencies.length}
+                </Text>
+              )}
             </Box>
           ))
         )}
@@ -83,8 +92,8 @@ function generateProgressBar(progress: number, width: number = 15): string {
 }
 
 // Log Stream Component
-const LogStream: React.FC<{ logs: string[] }> = ({ logs }) => {
-  const visibleLogs = logs.slice(-8); // Show last 8 logs
+const LogStream: React.FC<{ logs: string[]; debug?: boolean; verbose?: boolean }> = ({ logs, debug = false, verbose = false }) => {
+  const visibleLogs = logs.slice(verbose ? -20 : -8); // Show more logs in verbose mode
 
   return (
     <Box
@@ -94,18 +103,27 @@ const LogStream: React.FC<{ logs: string[] }> = ({ logs }) => {
       paddingX={1}
       flexGrow={1}
     >
-      <Text bold color="gray">Log Stream (Press q to quit)</Text>
+      <Text bold color="gray">
+        Log Stream (Press q to quit)
+        {debug && ' | DEBUG'}
+        {verbose && ' | VERBOSE'}
+      </Text>
       <Box marginTop={1}>
         {visibleLogs.length === 0 ? (
           <Text dimColor>No logs yet</Text>
         ) : (
           visibleLogs.map((log, i) => (
             <Box key={`log-${i}`}>
-              <Text dimColor>{log.substring(0, 70)}</Text>
+              <Text dimColor>{log.substring(0, verbose ? 120 : 70)}</Text>
             </Box>
           ))
         )}
       </Box>
+      {debug && (
+        <Box marginTop={1}>
+          <Text dimColor>Debug: {logs.length} total logs</Text>
+        </Box>
+      )}
     </Box>
   );
 };
@@ -114,14 +132,18 @@ const LogStream: React.FC<{ logs: string[] }> = ({ logs }) => {
 export const Dashboard: React.FC<DashboardProps> = ({
   taskName,
   subtasks,
-  onExit
+  onExit,
+  debug = false,
+  verbose = false
 }) => {
   const { exit } = useApp();
   const [logs, setLogs] = useState<string[]>([
     '[00:00:00] Dashboard initialized',
     `[00:00:01] Task: ${taskName}`,
-    `[00:00:02] Monitoring ${subtasks.length} subtasks`
-  ]);
+    `[00:00:02] Monitoring ${subtasks.length} subtasks`,
+    debug ? `[00:00:03] Debug mode: ${debug}` : '',
+    verbose ? `[00:00:04] Verbose mode: ${verbose}` : '',
+  ].filter(Boolean));
 
   // Handle keyboard input
   useInput((input, key) => {
@@ -145,10 +167,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
           `[${timestamp}] Active: ${activeCount}, Completed: ${completedCount}/${subtasks.length}`
         ]);
       }
+
+      if (debug) {
+        setLogs(prev => [
+          ...prev,
+          `[${timestamp}] Debug: Subtasks count: ${subtasks.length}, Active: ${activeCount}, Completed: ${completedCount}`
+        ]);
+      }
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [subtasks]);
+  }, [subtasks, debug]);
 
   // Get unique agent IDs
   const agentIds = Array.from(
@@ -192,18 +221,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </Box>
         ) : (
           agentIds.map(agentId => (
-            <AgentPanel key={agentId} agentId={agentId} subtasks={subtasks} />
+            <AgentPanel key={agentId} agentId={agentId} subtasks={subtasks} debug={debug} />
           ))
         )}
       </Box>
 
       {/* System Monitor */}
       <Box marginBottom={1} width="100%">
-        <SystemMonitor />
+        <SystemMonitor debug={debug} />
       </Box>
 
       {/* Log Stream */}
-      <LogStream logs={logs} />
+      <LogStream logs={logs} debug={debug} verbose={verbose} />
     </Box>
   );
 };

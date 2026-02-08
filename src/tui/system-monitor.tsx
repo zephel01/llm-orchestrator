@@ -58,7 +58,11 @@ function generateUsageBar(usage: number, width: number = 15): string {
 }
 
 // System Resources Monitor Component
-export const SystemMonitor: React.FC = () => {
+interface SystemMonitorProps {
+  debug?: boolean;
+}
+
+export const SystemMonitor: React.FC<SystemMonitorProps> = ({ debug = false }) => {
   const [resources, setResources] = useState<SystemResources>({
     cpu: { usage: 0, cores: 0 },
     memory: { total: 0, used: 0, free: 0, percentage: 0 },
@@ -101,7 +105,9 @@ export const SystemMonitor: React.FC = () => {
           gpu: gpuData
         });
       } catch (error) {
-        // Silently ignore errors during testing
+        if (debug) {
+          console.error('[SystemMonitor] Error fetching system resources:', error);
+        }
       }
     };
 
@@ -112,7 +118,7 @@ export const SystemMonitor: React.FC = () => {
     const interval = setInterval(updateResources, 2000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [debug]);
 
   return (
     <Box

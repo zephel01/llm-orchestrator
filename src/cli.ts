@@ -272,10 +272,21 @@ program
 program
   .command('tui')
   .description('Launch TUI Dashboard (demo mode)')
-  .action(async () => {
+  .option('-d, --debug', 'Enable debug mode with verbose logging')
+  .option('-v, --verbose', 'Show verbose output')
+  .action(async (options) => {
     const { spawn } = await import('child_process');
     const tuiPath = path.join(__dirname, '..', 'tui', 'index.tsx');
-    const tui = spawn('npx', ['tsx', tuiPath], {
+    const args = ['tsx', tuiPath];
+
+    if (options.debug) {
+      args.push('--debug');
+    }
+    if (options.verbose) {
+      args.push('--verbose');
+    }
+
+    const tui = spawn('npx', args, {
       stdio: 'inherit',
       shell: true
     });

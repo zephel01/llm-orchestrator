@@ -8,6 +8,18 @@ import { Dashboard } from './dashboard.js';
 import { DAGVisualizer } from './dag-visualizer.js';
 import { SubtaskWithDependencies, TaskStatus } from '../dependencies/types.js';
 
+// Debug mode
+const args = process.argv.slice(2);
+const isDebug = args.includes('--debug');
+const isVerbose = args.includes('--verbose');
+
+// Enable debug logging
+if (isDebug || isVerbose) {
+  console.log('[DEBUG] Debug mode:', isDebug);
+  console.log('[DEBUG] Verbose mode:', isVerbose);
+  console.log('[DEBUG] Args:', args);
+}
+
 // Mock data for demo
 const mockSubtasks: SubtaskWithDependencies[] = [
   {
@@ -48,6 +60,11 @@ const mockSubtasks: SubtaskWithDependencies[] = [
   }
 ];
 
+if (isDebug) {
+  console.log('[DEBUG] Mock subtasks count:', mockSubtasks.length);
+  console.log('[DEBUG] Agent IDs:', [...new Set(mockSubtasks.map(st => st.assignedTo))]);
+}
+
 // Show DAG visualization first
 console.log('\n');
 const dagVisualizer = new DAGVisualizer({ width: 80, showStatus: true });
@@ -60,6 +77,8 @@ const { waitUntilExit } = render(
   <Dashboard
     taskName="Build a REST API"
     subtasks={mockSubtasks}
+    debug={isDebug}
+    verbose={isVerbose}
     onExit={() => {
       console.log('Goodbye!');
     }}
