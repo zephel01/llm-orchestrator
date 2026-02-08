@@ -304,13 +304,16 @@ src/
 - ✅ Progress tracking visualization (inline, progress bar, JSON)
 - ✅ Error recovery mechanisms (exponential backoff)
 
-## Phase 5 Roadmap (Future)
+## Phase 5 Features (In Progress)
 
-- [ ] Conditional dependencies (success-based)
-- [ ] Advanced progress visualization (Web UI, graphs)
-- [ ] Machine learning for optimal recovery strategies
-- [ ] Distributed system support
-- [ ] tmux/iTerm2 split view UI
+- ✅ Conditional dependencies (success-based, failure-based, output-based)
+- ✅ TUI Dashboard (Terminal User Interface)
+  - ✅ Agent panel with progress tracking
+  - ✅ Real-time log streaming
+  - ✅ Interactive keyboard controls (q/ESC to quit)
+- [ ] DAG visualization (ASCII/Unicode)
+- [ ] tmux integration
+- [ ] CLI and TUI integration
 
 ## Configuration
 
