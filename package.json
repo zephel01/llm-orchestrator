@@ -2,13 +2,13 @@
   "name": "llm-orchestrator",
   "version": "0.5.1",
   "description": "Multi-agent system for autonomous task execution with LLMs. Support for local/remote LLM providers (Anthropic, OpenAI, Ollama, LM Studio, llama-server) with configurable base URLs.",
-  "main": "dist/src/cli.js",
-  "type": "module",
-  "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "start": "node dist/cli.js",
-    "orchestrator": "node dist/cli.js",
+    "main": "dist/cli.js",
+    "type": "module",
+    "scripts": {
+      "build": "tsc",
+      "dev": "tsc --watch",
+      "start": "node dist/cli.js",
+      "orchestrator": "node dist/cli.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:unit": "node tests/test.mjs",
     "test:valkey": "node tests/test-valkey.mjs",
@@ -25,9 +25,9 @@
     "tui:demo": "npx tsx tests/test-dag-visualizer.ts",
     "test:tmux": "tsx tests/test-tmux-integration.ts"
   },
-  "bin": {
-    "llmorch": "./dist/src/cli.js"
-  },
+    "bin": {
+      "llm-orchestrator": "./dist/src/cli.js"
+    },
   "keywords": [
     "ai",
     "agents",
