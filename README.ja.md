@@ -393,3 +393,7 @@ sudo dnf install tmux
 ## ライセンス
 
 MIT
+
+## 開発ガイド
+
+このツールを使った開発の詳細な手順については、[DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)を参照してください。

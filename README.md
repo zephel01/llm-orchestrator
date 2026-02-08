@@ -336,3 +336,7 @@ Team-specific config:
 ## License
 
 MIT
+
+## Development Guide
+
+For detailed instructions on how to use this tool for development, see [DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md).
