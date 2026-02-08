@@ -16,6 +16,10 @@ Terminal User Interface (TUI) for monitoring and managing LLM agent tasks.
 - Progress bars for task completion
 - Log stream with timestamps
 - System resource monitoring (CPU, Memory, GPU)
+- **Interactive keyboard shortcuts**
+- **Task filtering by status**
+- **Help menu**
+- **Toggle visibility of UI components**
 
 ### System Monitor
 - CPU usage with core count
@@ -23,6 +27,32 @@ Terminal User Interface (TUI) for monitoring and managing LLM agent tasks.
 - GPU monitoring (if available)
 - VRAM tracking
 - Color-coded usage indicators
+
+### Interactive Features
+
+#### Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `h` / `?` | Show/Hide help menu |
+| `r` | Manual refresh of tasks |
+| `s` | Cycle through status filters (All/Pending/In Progress/Completed/Failed) |
+| `l` | Toggle log display |
+| `a` | Toggle agents panel display |
+| `d` | Toggle debug mode (requires restart) |
+| `v` | Toggle verbose mode (requires restart) |
+| `q` / `ESC` | Exit dashboard |
+
+#### Status Filtering
+
+The dashboard supports filtering tasks by status:
+- **All**: Shows all tasks
+- **Pending**: Shows only pending tasks
+- **In Progress**: Shows only currently executing tasks
+- **Completed**: Shows only finished tasks
+- **Failed**: Shows only failed tasks
+
+The status bar at the top displays the current filter and task counts for each status.
 
 ### Modes
 
@@ -50,16 +80,12 @@ npm run tui -- --verbose
 ```
 Shows extended log entries (20 vs 8 default).
 
-### Key Controls
-- `q` or `Escape`: Exit dashboard
-- Other keys: Reserved for future features
-
 ## Architecture
 
 ### Components
 
 #### `Dashboard`
-Main dashboard component that coordinates all sub-components.
+Main dashboard component that coordinates all sub-components and handles keyboard input.
 
 #### `DAGVisualizer`
 Renders dependency graphs using ASCII/Unicode characters.
@@ -68,13 +94,19 @@ Renders dependency graphs using ASCII/Unicode characters.
 React wrapper for DAG visualization.
 
 #### `SystemMonitor`
-Monitors system resources using the `systeminformation` library.
+Monitors system resources using `systeminformation` library.
 
 #### `AgentPanel`
-Displays tasks assigned to a specific agent.
+Displays tasks assigned to a specific agent with status tracking.
 
 #### `LogStream`
-Shows real-time logs from the application.
+Shows real-time logs from application with configurable history size.
+
+#### `HelpMenu`
+Displays keyboard shortcuts and usage information.
+
+#### `StatusFilter`
+Shows current filter and task counts by status.
 
 #### `useBackendMonitoring`
 Custom hook for backend integration and real-time updates.
@@ -93,30 +125,14 @@ Uses StorageBackend interface for:
 - Batch updates
 - Filtering by agent/status
 - Real-time synchronization
-
-## Style Guide
-
-See `src/tui/STYLE_GUIDE.md` for detailed styling conventions.
-
-### Color Semantics
-
-| Usage | Color |
-|--------|-------|
-| Default | (none) |
-| User Input/Selection | cyan |
-| Success/Completed | green |
-| Error/Failed | red |
-| Warning | yellow |
-| Info | blue |
-| Agent/In Progress | magenta |
-| Secondary Info | dim |
+- Auto-refresh every 2 seconds in live mode
 
 ## Development
 
 ### Project Structure
 ```
 src/tui/
-├── dashboard.tsx           # Main dashboard component
+├── dashboard.tsx           # Main dashboard with interactive features
 ├── dag-view.tsx          # DAG visualization wrapper
 ├── dag-visualizer.ts     # DAG rendering logic
 ├── system-monitor.tsx     # System resource monitor
@@ -132,12 +148,22 @@ Run the DAG visualizer demo:
 npm run tui:demo
 ```
 
+### Adding New Features
+
+1. Create new component in `src/tui/`
+2. Import and integrate in `Dashboard` component
+3. Add keyboard shortcut handling in `useInput` hook
+4. Update help menu if needed
+5. Test thoroughly before committing
+
 ## Future Enhancements
 
-- Interactive task management
-- Keyboard shortcuts
-- Scrolling support
-- Real-time task updates from backend
-- Task creation/editing
+- Task creation/editing via UI
 - Agent communication monitoring
 - Task dependency visualization
+- Scrolling support for long lists
+- Configuration panel
+- Multiple task management
+- Task search functionality
+- Export/import task configurations
+- Custom theme support
