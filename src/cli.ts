@@ -268,4 +268,21 @@ program
     }
   });
 
+// TUI Dashboard (Demo)
+program
+  .command('tui')
+  .description('Launch TUI Dashboard (demo mode)')
+  .action(async () => {
+    const { spawn } = await import('child_process');
+    const tuiPath = path.join(__dirname, '..', 'tui', 'index.tsx');
+    const tui = spawn('npx', ['tsx', tuiPath], {
+      stdio: 'inherit',
+      shell: true
+    });
+
+    tui.on('exit', (code) => {
+      process.exit(code ?? 0);
+    });
+  });
+
   program.parse();

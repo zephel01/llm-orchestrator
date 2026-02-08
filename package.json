@@ -20,7 +20,8 @@
     "test:conditional": "node dist/tests/test-conditional-dependencies.js",
     "test:phase4": "npm run test:dependencies && npm run test:progress && npm run test:recovery",
     "test:phase5": "npm run test:conditional",
-    "tui": "tsx src/tui/index.tsx"
+    "tui": "tsx src/tui/index.tsx",
+    "tui:demo": "npx tsx tests/test-dag-visualizer.ts"
   },
   "bin": {
     "llm-orchestrator": "./dist/cli.js"
@@ -44,6 +45,7 @@
     "openai": "^4.75.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "systeminformation": "^5.30.7",
     "zod": "^3.23.0"
   },
   "devDependencies": {

@@ -5,6 +5,7 @@
 import React from 'react';
 import { render } from 'ink';
 import { Dashboard } from './dashboard.js';
+import { DAGVisualizer } from './dag-visualizer.js';
 import { SubtaskWithDependencies, TaskStatus } from '../dependencies/types.js';
 
 // Mock data for demo
@@ -46,6 +47,13 @@ const mockSubtasks: SubtaskWithDependencies[] = [
     assignedTo: 'agent-2'
   }
 ];
+
+// Show DAG visualization first
+console.log('\n');
+const dagVisualizer = new DAGVisualizer({ width: 80, showStatus: true });
+const dag = dagVisualizer.visualize(mockSubtasks);
+console.log(dag.lines.join('\n'));
+console.log('\n');
 
 // Run dashboard
 const { waitUntilExit } = render(
