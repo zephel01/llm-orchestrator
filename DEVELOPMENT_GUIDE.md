@@ -4,6 +4,110 @@
 
 ---
 
+## 📦 インストール方法
+
+### 方法1: グローバルインストール（推奨）
+
+```bash
+# 1. リポジトリをクローン
+git clone <repository-url>
+cd llm-orchestrator
+
+# 2. 依存関係をインストール
+npm install
+
+# 3. ビルド
+npm run build
+
+# 4. グローバルインストール
+npm install -g .
+```
+
+**実行方法:**
+```bash
+llm-orchestrator create my-team --provider anthropic
+llm-orchestrator run my-team "タスク" --tmux
+```
+
+---
+
+### 方法2: npm link（開発中）
+
+```bash
+# 1. 依存関係をインストール
+npm install
+
+# 2. ビルド
+npm run build
+
+# 3. グローバルリンク
+npm link
+```
+
+**実行方法:**
+```bash
+llm-orchestrator create my-team --provider anthropic
+llm-orchestrator run my-team "タスク" --tmux
+```
+
+**リンク解除:**
+```bash
+npm unlink -g llm-orchestrator
+```
+
+---
+
+### 方法3: ローカル実行（開発中）
+
+```bash
+# 1. 依存関係をインストール
+npm install
+
+# 2. ビルド
+npm run build
+
+# 3. 実行
+npm run start create my-team --provider anthropic
+npm run start run my-team "タスク" --tmux
+
+# または
+node dist/cli.js create my-team --provider anthropic
+node dist/cli.js run my-team "タスク" --tmux
+```
+
+---
+
+## 🔍 推奨する使い分け
+
+| シチュエーション | 方法 | コマンド |
+|----------------|------|---------|
+| **通常使用** | グローバル | `npm install -g .` → `llm-orchestrator ...` |
+| **開発中** | ローカル | `npm run start ...` または `node dist/cli.js ...` |
+| **頻繁な開発** | npm link | `npm link` → `llm-orchestrator ...` |
+
+---
+
+## ⚙️ 設定
+
+### APIキーの設定
+
+```bash
+# Anthropic Claude
+export ANTHROPIC_API_KEY="your-api-key"
+
+# OpenAI
+export OPENAI_API_KEY="your-api-key"
+
+# シェル設定に追加（永続化）
+echo 'export ANTHROPIC_API_KEY="your-api-key"' >> ~/.zshrc  # zsh
+echo 'export ANTHROPIC_API_KEY="your-api-key"' >> ~/.bashrc  # bash
+source ~/.zshrc  # または source ~/.bashrc
+```
+
+---
+
+---
+
 ## 📋 概要
 
 LLM Orchestratorは、**「人間がタスクを渡すと、複数のAIエージェントが自動的にプログラムを書く」**ツールです。
