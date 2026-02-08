@@ -13,10 +13,18 @@ export interface TaskManagerConfig {
 export class TaskManager {
   private backend: StorageBackend;
   private debug: boolean;
+  private messageIdCounter = 0;
 
   constructor(config: TaskManagerConfig) {
     this.backend = config.backend;
     this.debug = config.debug || false;
+  }
+
+  /**
+   * Generate unique ID
+   */
+  private generateId(): string {
+    return `msg_${Date.now()}_${this.messageIdCounter++}`;
   }
 
   /**
@@ -74,9 +82,13 @@ export class TaskManager {
 
     // Publish update
     await this.backend.publish('tasks', {
+      id: this.generateId(),
+      from: 'task-manager',
+      to: '*',
       type: 'subtask_added',
-      subtask,
+      content: { subtask },
       timestamp: Date.now(),
+      status: 'delivered',
     });
   }
 
@@ -114,11 +126,13 @@ export class TaskManager {
 
     // Publish update
     await this.backend.publish('tasks', {
+      id: this.generateId(),
+      from: 'task-manager',
+      to: '*',
       type: 'subtask_updated',
-      id,
-      oldSubtask,
-      newSubtask,
+      content: { id, oldSubtask, newSubtask },
       timestamp: Date.now(),
+      status: 'delivered',
     });
   }
 
@@ -163,9 +177,13 @@ export class TaskManager {
 
     // Publish update
     await this.backend.publish('tasks', {
+      id: this.generateId(),
+      from: 'task-manager',
+      to: '*',
       type: 'subtask_deleted',
-      id,
+      content: { id },
       timestamp: Date.now(),
+      status: 'delivered',
     });
   }
 
@@ -202,9 +220,13 @@ export class TaskManager {
 
     // Publish update
     await this.backend.publish('tasks', {
+      id: this.generateId(),
+      from: 'task-manager',
+      to: '*',
       type: 'subtasks_updated',
-      updates,
+      content: { updates },
       timestamp: Date.now(),
+      status: 'delivered',
     });
   }
 
@@ -236,8 +258,13 @@ export class TaskManager {
 
     // Publish update
     await this.backend.publish('tasks', {
+      id: this.generateId(),
+      from: 'task-manager',
+      to: '*',
       type: 'subtasks_cleared',
+      content: {},
       timestamp: Date.now(),
+      status: 'delivered',
     });
   }
 }
