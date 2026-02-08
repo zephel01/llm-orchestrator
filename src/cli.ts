@@ -271,9 +271,11 @@ program
 // TUI Dashboard (Demo)
 program
   .command('tui')
-  .description('Launch TUI Dashboard (demo mode)')
+  .description('Launch TUI Dashboard')
   .option('-d, --debug', 'Enable debug mode with verbose logging')
   .option('-v, --verbose', 'Show verbose output')
+  .option('--team <name>', 'Team name to monitor')
+  .option('--task <description>', 'Task description (required with --team)')
   .action(async (options) => {
     const { spawn } = await import('child_process');
     const tuiPath = path.join(__dirname, '..', 'tui', 'index.tsx');
@@ -284,6 +286,12 @@ program
     }
     if (options.verbose) {
       args.push('--verbose');
+    }
+    if (options.team) {
+      args.push('--team', options.team);
+    }
+    if (options.task) {
+      args.push('--task', options.task);
     }
 
     const tui = spawn('npx', args, {
