@@ -93,15 +93,84 @@ ioredisをv4.28.5にダウングレードし、以下の修正を行いました
 
 ---
 
+### 5. tmux統合 ✅
+
+#### 実装した内容
+
+1. **tmux統合モジュール** (`src/tui/tmux-integration.ts`)
+   - tmuxのインストール確認
+   - 端末サイズの検証（最小80x24 / 120x30）
+   - tmuxセッションの作成・管理
+   - 2ペインレイアウト（TUI + ログ）
+   - 3ペインレイアウト（TUI + エージェントログ + システムログ）
+
+2. **CLIオプションの追加**
+   - `--tmux`: tmuxセッションでTUI Dashboardを起動（2ペインレイアウト）
+   - `--tmux-advanced`: 高度な3ペインレイアウトでTUI Dashboardを起動
+   - `tmux-list`: LLM Orchestratorのtmuxセッションを一覧表示
+   - `tmux-kill <session-name>`: 指定したtmuxセッションを終了
+
+3. **画面崩れ対策**
+   - 端末サイズの事前検証
+   - 十分な端末サイズがない場合は自動的に簡易レイアウトに切り替え
+   - ペイン分割前に画面クリア
+   - TUI起動待ち時間（500ms）を追加
+
+#### 結果
+- ✅ tmux統合モジュールの実装完了
+- ✅ CLIオプションの追加完了
+- ✅ 画面崩れ対策の実装完了
+- ✅ tmuxセッション管理コマンドの実装完了
+
+---
+
+### 4. CLIとTUI Dashboardの統合 ✅
+
+#### 問題の概要
+TUI Dashboardは独立したコマンドとして実装されており、CLIの`run`コマンドと統合されていませんでした。
+
+#### 解決策
+`run`コマンドに`--tui`オプションを追加し、TUI Dashboardを起動できるようにしました：
+
+1. **ESM互換性の修正**
+   ```typescript
+   import { fileURLToPath } from 'url';
+   import { dirname } from 'path';
+
+   const __filename = fileURLToPath(import.meta.url);
+   const __dirname = dirname(__filename);
+   ```
+
+2. **--tuiオプションの追加**
+   ```bash
+   llm-orchestrator run <team-name> "<task>" --tui
+   ```
+
+3. **TUI Dashboardの起動**
+   - `tsx`を使用してTUI Dashboardを起動
+   - チーム名とタスクをパラメータとして渡す
+   - `--debug`と`--verbose`オプションでデバッグモードを有効化
+
+4. **LiveDashboardコンポーネントの実装**
+   - `useBackendMonitoring`フックを使用してリアルタイム監視
+   - チームデータの自動更新
+
+#### 結果
+- ✅ CLIの`run`コマンドからTUI Dashboardを起動可能
+- ✅ ESMモジュールでの__dirname使用問題を解決
+- ✅ デバッグモードと詳細ログモードのサポート
+- ✅ リアルタイム監視の基礎実装
+
+---
+
 ## 次のステップ
 
-### 1. DAG Visualizerの拡張
-- [ ] tmux統合（自動ペイン分割）
-- [ ] インタラクティブ操作の追加
+### 1. TUI Dashboard の拡張
+- [x] tmux統合（自動ペイン分割）
+- [ ] リアルタイムデータの完全な接続（バックエンド監視）
 
-### 2. CLIとの統合
-- [ ] TUI Dashboardをllm-orchestrator runに統合
-- [ ] リアルタイムデータの接続
+### 2. CLI との統合
+- [ ] リアルタイムデータの完全な接続（バックエンド監視）
 
 ---
 
@@ -111,6 +180,7 @@ ioredisをv4.28.5にダウングレードし、以下の修正を行いました
 - ioredis v4.28.5を使用することで型エラーを解決
 - ts-jestを使用することで、TypeScriptテストを簡単に実行可能
 - `showStatus`オプションを正しく実装することで、柔軟なビジュアライゼーションが可能
+- ESMモジュールで__dirnameを使用する場合、`fileURLToPath`と`dirname`を使用する必要がある
 
 ### 問題解決のアプローチ
 1. まず情報収集と調査
@@ -118,3 +188,7 @@ ioredisをv4.28.5にダウングレードし、以下の修正を行いました
 3. 複数の解決策を試す
 4. 最適な解決策を選択する
 5. 実装して確認する
+
+### コミット履歴
+1. fix: resolve ioredis type errors and fix TUI tests
+2. feat: integrate TUI Dashboard with CLI run command

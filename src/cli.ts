@@ -10,6 +10,13 @@ import { spawn } from 'child_process';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import {
+  createTuiSession,
+  createAdvancedSession,
+  killSession,
+  listOrchestratorSessions,
+  isTmuxAvailable
+} from './tui/tmux-integration.js';
 
 // ESM用の__dirname定義
 const __filename = fileURLToPath(import.meta.url);
@@ -154,6 +161,39 @@ program
     }
   });
 
+// List tmux sessions
+program
+  .command('tmux-list')
+  .description('List all LLM Orchestrator tmux sessions')
+  .action(async () => {
+    const sessions = await listOrchestratorSessions();
+
+    if (sessions.length === 0) {
+      console.log('No LLM Orchestrator tmux sessions found.');
+      console.log('Create one with: llm-orchestrator run <team-name> "<task>" --tmux');
+    } else {
+      console.log('LLM Orchestrator tmux sessions:');
+      sessions.forEach(session => {
+        console.log(`  - ${session}`);
+        console.log(`    Attach:   tmux attach -t ${session}`);
+        console.log(`    Kill:     tmux kill-session -t ${session}`);
+      });
+    }
+  });
+
+// Kill tmux session
+program
+  .command('tmux-kill <session-name>')
+  .description('Kill a specific tmux session')
+  .action(async (sessionName) => {
+    try {
+      await killSession(sessionName);
+      console.log(`tmux session "${sessionName}" killed.`);
+    } catch (error: any) {
+      console.error('Error killing tmux session:', error.message);
+    }
+  });
+
 // Run task
 program
   .command('run <team-name>')
@@ -163,6 +203,8 @@ program
   .option('-b, --backend <type>', 'Override communication backend (file, valkey)')
   .option('-u, --base-url <url>', 'Override base URL (for local providers)')
   .option('--tui', 'Launch TUI Dashboard for real-time monitoring')
+  .option('--tmux', 'Launch TUI Dashboard in tmux session (requires 80x24 terminal)')
+  .option('--tmux-advanced', 'Launch TUI Dashboard in advanced tmux layout (requires 120x30 terminal)')
   .option('--debug', 'Enable debug mode for TUI')
   .option('--verbose', 'Enable verbose mode for TUI')
   .action(async (teamName, task, options) => {
@@ -174,6 +216,57 @@ program
       const teams = await teamManager.discoverTeams();
       teams.forEach(t => console.log(`  - ${t.name}`));
       return;
+    }
+
+    // TUI Dashboard in tmux mode
+    if (options.tmux || options.tmuxAdvanced) {
+      try {
+        const tmuxAvailable = await isTmuxAvailable();
+        if (!tmuxAvailable) {
+          console.error('\n❌ tmux is not installed. Please install tmux first:');
+          console.error('   macOS:   brew install tmux');
+          console.error('   Linux:   sudo apt-get install tmux');
+          console.error('   Windows: Use WSL with tmux\n');
+          process.exit(1);
+        }
+
+        const tuiPath = path.join(process.cwd(), 'src', 'tui', 'index.tsx');
+        const sessionName = `llm-orchestrator-${teamName}-${Date.now()}`;
+        const logDir = path.join(process.env.HOME || '.', '.llm-orchestrator', teamName);
+
+        const config = {
+          sessionName,
+          teamName,
+          task,
+          tuiPath,
+          debug: options.debug,
+          verbose: options.verbose,
+          logDir
+        };
+
+        if (options.tmuxAdvanced) {
+          await createAdvancedSession(config);
+        } else {
+          await createTuiSession(config);
+        }
+
+        // Attach to the tmux session
+        const { spawn } = await import('child_process');
+        const attachProcess = spawn('tmux', ['attach-session', '-t', sessionName], {
+          stdio: 'inherit',
+          shell: true
+        });
+
+        attachProcess.on('exit', (code) => {
+          process.exit(code ?? 0);
+        });
+
+        return;
+      } catch (error: any) {
+        console.error('\n❌ Failed to create tmux session:', error.message);
+        console.log('\n💡 You can still use --tui option for standalone TUI Dashboard\n');
+        process.exit(1);
+      }
     }
 
     // TUI Dashboard モードの場合

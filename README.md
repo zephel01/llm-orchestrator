@@ -253,9 +253,56 @@ export OPENAI_API_KEY="your-api-key"
   - ✅ Agent panel with progress tracking
   - ✅ Real-time log streaming
   - ✅ Interactive keyboard controls (q/ESC to quit)
-- [ ] DAG visualization (ASCII/Unicode)
-- [ ] tmux integration
-- [ ] CLI and TUI integration
+- ✅ DAG visualization (ASCII/Unicode)
+- ✅ tmux integration
+- ✅ CLI and TUI integration
+
+### TUI Dashboard
+
+The TUI Dashboard provides an interactive UI for monitoring agent progress in real-time within your terminal.
+
+```bash
+# Launch in demo mode
+llm-orchestrator tui
+
+# Launch with specific team in live mode
+llm-orchestrator run my-team "Write a Python script" --tui
+```
+
+#### tmux Integration
+
+With tmux, you can monitor TUI Dashboard and logs simultaneously in multiple panes.
+
+```bash
+# 2-pane layout (TUI + Logs)
+llm-orchestrator run my-team "Write a Python script" --tmux
+
+# 3-pane layout (TUI + Agent Logs + System Logs)
+llm-orchestrator run my-team "Write a Python script" --tmux-advanced
+```
+
+**tmux Shortcuts**:
+- Detach from session: `Ctrl+B`, then `D`
+- Attach to session: `tmux attach -t <session-name>`
+- List sessions: `llm-orchestrator tmux-list`
+- Kill session: `llm-orchestrator tmux-kill <session-name>` or `tmux kill-session -t <session-name>`
+
+**Requirements**:
+- tmux 2.0 or later
+- 2-pane layout: Terminal size 80x24 or larger
+- 3-pane layout: Terminal size 120x30 or larger
+
+**Installation**:
+```bash
+# macOS
+brew install tmux
+
+# Linux (Ubuntu/Debian)
+sudo apt-get install tmux
+
+# Linux (Fedora)
+sudo dnf install tmux
+```
 
 ## Configuration
 

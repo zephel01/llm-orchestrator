@@ -310,9 +310,56 @@ src/
   - ✅ エージェントパネル付き進捗追跡
   - ✅ リアルタイムログストリーミング
   - ✅ インタラクティブキーボードコントロール（q/ESCで終了）
-- [ ] DAG可視化（ASCII/Unicode）
-- [ ] tmux統合
-- [ ] CLIとTUIの統合
+- ✅ DAG可視化（ASCII/Unicode）
+- ✅ tmux統合
+- ✅ CLIとTUIの統合
+
+### TUI Dashboard
+
+TUI Dashboardは、ターミナル内でエージェントの進捗をリアルタイムで監視できるインタラクティブなUIです。
+
+```bash
+# デモモードで起動
+llm-orchestrator tui
+
+# チームを指定してライブモードで起動
+llm-orchestrator run my-team "Write a Python script" --tui
+```
+
+#### tmux統合
+
+tmuxを使用すると、複数のペインでTUI Dashboardとログを同時に監視できます。
+
+```bash
+# 2ペインレイアウト（TUI + ログ）
+llm-orchestrator run my-team "Write a Python script" --tmux
+
+# 3ペインレイアウト（TUI + エージェントログ + システムログ）
+llm-orchestrator run my-team "Write a Python script" --tmux-advanced
+```
+
+**tmuxショートカット**:
+- セッションからのデタッチ: `Ctrl+B`, その後 `D`
+- セッションへのアタッチ: `tmux attach -t <session-name>`
+- セッションの一覧表示: `llm-orchestrator tmux-list`
+- セッションの終了: `llm-orchestrator tmux-kill <session-name>` または `tmux kill-session -t <session-name>`
+
+**要件**:
+- tmux 2.0以降
+- 2ペインレイアウト: 端末サイズ 80x24 以上
+- 3ペインレイアウト: 端末サイズ 120x30 以上
+
+**インストール**:
+```bash
+# macOS
+brew install tmux
+
+# Linux (Ubuntu/Debian)
+sudo apt-get install tmux
+
+# Linux (Fedora)
+sudo dnf install tmux
+```
 
 ## 設定
 
