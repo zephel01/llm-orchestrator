@@ -26,7 +26,7 @@
     "test:tmux": "tsx tests/test-tmux-integration.ts"
   },
   "bin": {
-    "llm-orchestrator": "./dist/src/cli.js"
+    "llmorch": "./dist/src/cli.js"
   },
   "keywords": [
     "ai",
