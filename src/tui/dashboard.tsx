@@ -3,7 +3,7 @@
  * Terminal User Interface for LLM Orchestrator
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
 import { TaskStatus, SubtaskWithDependencies } from '../dependencies/types.js';
 import { useBackendMonitoring } from './useBackendMonitoring.js';
@@ -158,13 +158,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
   teamName
 }) => {
   const { exit } = useApp();
-  const { state: backendState, addLog: addBackendLog } = useBackendMonitoring({
+  const { state: backendState, addLog: addBackendLog, refreshSubtasks } = useBackendMonitoring({
     teamName,
     debug,
   });
 
   const [logs, setLogs] = useState<string[]>([]);
-  const [subtasks, setSubtasks] = useState<SubtaskWithDependencies[]>(initialSubtasks);
+
+  // Use backend subtasks if available, otherwise use initial subtasks
+  const subtasks = backendState.subtasks.length > 0 ? backendState.subtasks : initialSubtasks;
 
   // Initialize logs on mount
   useEffect(() => {
@@ -181,15 +183,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
     if (teamName) {
       initialLogs.push(`[00:00:05] Team: ${teamName}`);
+      initialLogs.push(`[00:00:06] Backend: ${backendState.isConnected ? 'Connected' : 'Disconnected'}`);
+    }
+    if (backendState.error) {
+      initialLogs.push(`[00:00:07] Error: ${backendState.error}`);
     }
     setLogs(initialLogs);
-  }, [taskName, subtasks.length, debug, verbose, teamName]);
+  }, [taskName, subtasks.length, debug, verbose, teamName, backendState.isConnected, backendState.error]);
 
   // Sync backend logs to dashboard logs
   useEffect(() => {
     // Backend logs are added via addBackendLog hook
     // This effect is kept for future enhancements
   }, [backendState.lastUpdate]);
+
+  // Auto-refresh subtasks in live mode
+  useEffect(() => {
+    if (!teamName || !backendState.isConnected) {
+      return;
+    }
+
+    const interval = setInterval(async () => {
+      await refreshSubtasks();
+    }, 2000); // Refresh every 2 seconds
+
+    return () => clearInterval(interval);
+  }, [teamName, backendState.isConnected, refreshSubtasks]);
 
   // Handle keyboard input
   useInput((input, key) => {

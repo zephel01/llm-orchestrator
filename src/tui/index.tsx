@@ -88,12 +88,43 @@ if (isLiveMode) {
 
     taskName = taskDescription!;
 
-    // TODO: Load actual subtasks from backend
-    // For now, use mock data with actual team configuration
+    // Load subtasks from backend if available
     console.log('[INFO] Live mode enabled for team:', teamName);
     console.log('[INFO] Task:', taskDescription);
-    console.log('[WARN] Using mock data - backend integration coming soon');
-    subtasks = mockSubtasks;
+
+    // Check for existing subtasks in backend
+    const { createBackend } = await import('../communication/factory.js');
+    const basePath = path.join(process.env.HOME || '.', '.llm-orchestrator');
+    const backend = createBackend({
+      type: 'file',
+      teamName,
+      basePath,
+    });
+
+    await backend.initialize();
+
+    try {
+      const subtasksState = await backend.getState('subtasks');
+      if (subtasksState && Array.isArray(subtasksState) && subtasksState.length > 0) {
+        subtasks = subtasksState;
+        console.log('[INFO] Loaded existing subtasks from backend');
+      } else {
+        // Initialize with mock subtasks for demo
+        subtasks = mockSubtasks;
+        await backend.setState('subtasks', subtasks);
+        console.log('[INFO] Initialized demo subtasks in backend');
+      }
+    } catch (error) {
+      console.log('[WARN] No existing subtasks found, initializing demo data');
+      subtasks = mockSubtasks;
+      try {
+        await backend.setState('subtasks', subtasks);
+      } catch (setStateError) {
+        console.error('[ERROR] Failed to save subtasks:', setStateError);
+      }
+    }
+
+    await backend.close();
   } catch (error) {
     console.error('[ERROR] Failed to load team configuration:', error);
     process.exit(1);

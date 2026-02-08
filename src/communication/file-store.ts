@@ -3,16 +3,10 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { existsSync } from 'fs';
+import type { Message } from './interface.js';
 
-export interface Message {
-  id: string;
-  from: string;
-  to: string | '*';
-  type: 'command' | 'report' | 'proposal' | 'approval' | 'broadcast' | 'response' | 'stop';
-  content: any;
-  timestamp: number;
-  status: 'pending' | 'delivered' | 'read' | 'processed';
-}
+export { Message };
+
 
 export interface CommunicationBus {
   write(targetId: string, message: Message): Promise<void>;
@@ -23,6 +17,7 @@ export interface CommunicationBus {
   acquireLock(resource: string, agentId: string): Promise<boolean>;
   releaseLock(resource: string, agentId: string): Promise<void>;
 }
+
 
 // StorageBackend 互換の拡張インターフェース
 export interface FileBackendConfig {

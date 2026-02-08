@@ -16,12 +16,14 @@ interface BackendMonitoringState {
   subtasks: SubtaskWithDependencies[];
   isConnected: boolean;
   lastUpdate: Date | null;
+  error: string | null;
 }
 
 interface UseBackendMonitoringReturn {
   state: BackendMonitoringState;
   addLog: (message: string) => void;
   clearLogs: () => void;
+  refreshSubtasks: () => Promise<void>;
 }
 
 export function useBackendMonitoring(
@@ -33,6 +35,7 @@ export function useBackendMonitoring(
     subtasks: [],
     isConnected: false,
     lastUpdate: null,
+    error: null,
   });
 
   const logsRef = useRef<string[]>([]);
@@ -46,6 +49,40 @@ export function useBackendMonitoring(
   const clearLogs = useCallback(() => {
     logsRef.current = [];
   }, []);
+
+  const refreshSubtasks = useCallback(async () => {
+    if (!teamName || !backendRef.current) {
+      return;
+    }
+
+    try {
+      if (debug) {
+        addLog('[DEBUG] Refreshing subtasks from backend');
+      }
+
+      // Load subtasks from backend state
+      const subtasksState = await backendRef.current.getState('subtasks');
+      const subtasks: SubtaskWithDependencies[] = subtasksState || [];
+
+      setState(prev => ({
+        ...prev,
+        subtasks,
+        lastUpdate: new Date(),
+      }));
+
+      if (debug) {
+        addLog(`[DEBUG] Loaded ${subtasks.length} subtasks`);
+      }
+    } catch (error) {
+      const errorMessage = `Failed to refresh subtasks: ${error}`;
+      console.error('[ERROR]', errorMessage);
+      addLog(`[ERROR] ${errorMessage}`);
+      setState(prev => ({
+        ...prev,
+        error: errorMessage,
+      }));
+    }
+  }, [teamName, debug, addLog]);
 
   // Initialize backend connection
   useEffect(() => {
@@ -81,17 +118,31 @@ export function useBackendMonitoring(
             addLog(`[DEBUG] Received task update: ${JSON.stringify(message)}`);
           }
 
-          // TODO: Process actual task updates
-          // For now, we'll just log them
-          setState(prev => ({
-            ...prev,
-            lastUpdate: new Date(),
-          }));
+          // Refresh subtasks when updates are received
+          refreshSubtasks();
         });
 
+        // Subscribe to agent status updates
+        await backend.subscribe('agents', (message: any) => {
+          if (debug) {
+            addLog(`[DEBUG] Received agent update: ${JSON.stringify(message)}`);
+          }
+
+          // Refresh subtasks when agent status changes
+          refreshSubtasks();
+        });
+
+        // Load initial subtasks
+        await refreshSubtasks();
+
       } catch (error) {
-        console.error('[ERROR] Failed to initialize backend:', error);
-        addLog(`[ERROR] Failed to connect to backend: ${error}`);
+        const errorMessage = `Failed to initialize backend: ${error}`;
+        console.error('[ERROR]', errorMessage);
+        addLog(`[ERROR] ${errorMessage}`);
+        setState(prev => ({
+          ...prev,
+          error: errorMessage,
+        }));
       }
     };
 
@@ -102,11 +153,12 @@ export function useBackendMonitoring(
         backendRef.current.close().catch(console.error);
       }
     };
-  }, [teamName, debug, addLog]);
+  }, [teamName, debug, addLog, refreshSubtasks]);
 
   return {
     state,
     addLog,
     clearLogs,
+    refreshSubtasks,
   };
 }

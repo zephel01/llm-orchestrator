@@ -1,9 +1,16 @@
 // ストレージ抽象化インターフェース
 
-import { Message } from './file-store.js';
+export type MessageType = 'command' | 'report' | 'proposal' | 'approval' | 'broadcast' | 'response' | 'stop' | 'subtask_added' | 'subtask_updated' | 'subtask_deleted' | 'subtasks_updated' | 'subtasks_cleared';
 
-export { Message };
-
+export interface Message {
+  id: string;
+  from: string;
+  to: string | '*';
+  type: MessageType;
+  content: any;
+  timestamp: number;
+  status: 'pending' | 'delivered' | 'read' | 'processed';
+}
 
 export interface StorageBackend {
   // 初期化
