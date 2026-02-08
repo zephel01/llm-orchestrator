@@ -100,7 +100,7 @@ const LogStream: React.FC<{ logs: string[] }> = ({ logs }) => {
           <Text dimColor>No logs yet</Text>
         ) : (
           visibleLogs.map((log, i) => (
-            <Box key={i}>
+            <Box key={`log-${i}`}>
               <Text dimColor>{log.substring(0, 70)}</Text>
             </Box>
           ))
