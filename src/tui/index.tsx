@@ -122,6 +122,7 @@ const { waitUntilExit } = render(
     subtasks={subtasks}
     debug={isDebug}
     verbose={isVerbose}
+    teamName={teamName || undefined}
     onExit={() => {
       console.log('Goodbye!');
     }}

@@ -6,6 +6,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
 import { TaskStatus, SubtaskWithDependencies } from '../dependencies/types.js';
+
+// Dashboard Props
+interface DashboardProps {
+  taskName: string;
+  subtasks: SubtaskWithDependencies[];
+  onExit?: () => void;
+  debug?: boolean;
+  verbose?: boolean;
+  teamName?: string;
+}
 import { SystemMonitor } from './system-monitor.js';
 
 // Dashboard Props
