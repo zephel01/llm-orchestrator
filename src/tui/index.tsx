@@ -4,10 +4,11 @@
 
 import React from 'react';
 import { render } from 'ink';
+import { Box, Text } from 'ink';
 import { Dashboard } from './dashboard.js';
 import { DAGVisualizer } from './dag-visualizer.js';
 import { SubtaskWithDependencies, TaskStatus } from '../dependencies/types.js';
-import { TeamManager } from '../team-manager/index.js';
+import { useBackendMonitoring } from './useBackendMonitoring.js';
 import * as path from 'path';
 
 // Parse command line arguments
@@ -70,94 +71,68 @@ const mockSubtasks: SubtaskWithDependencies[] = [
   }
 ];
 
-// Load subtasks
-let subtasks: SubtaskWithDependencies[];
-let taskName: string;
+// Live Dashboard Component with real-time monitoring
+const LiveDashboard: React.FC = () => {
+  const { state, addLog, clearLogs, refreshSubtasks } = useBackendMonitoring({
+    teamName: teamName || 'default-team',
+    debug: isDebug
+  });
 
-if (isLiveMode) {
-  try {
-    const teamManager = new TeamManager();
-    const teamConfig = await teamManager.getTeamConfig(teamName!);
+  const { subtasks, isConnected, error } = state;
 
-    if (!teamConfig) {
-      console.error(`Team "${teamName}" not found. Available teams:`);
-      const teams = await teamManager.discoverTeams();
-      teams.forEach(t => console.log(`  - ${t.name}`));
-      process.exit(1);
-    }
-
-    taskName = taskDescription!;
-
-    // Load subtasks from backend if available
-    console.log('[INFO] Live mode enabled for team:', teamName);
-    console.log('[INFO] Task:', taskDescription);
-
-    // Check for existing subtasks in backend
-    const { createBackend } = await import('../communication/factory.js');
-    const basePath = path.join(process.env.HOME || '.', '.llm-orchestrator');
-    const backend = createBackend({
-      type: 'file',
-      teamName,
-      basePath,
-    });
-
-    await backend.initialize();
-
-    try {
-      const subtasksState = await backend.getState('subtasks');
-      if (subtasksState && Array.isArray(subtasksState) && subtasksState.length > 0) {
-        subtasks = subtasksState;
-        console.log('[INFO] Loaded existing subtasks from backend');
-      } else {
-        // Initialize with mock subtasks for demo
-        subtasks = mockSubtasks;
-        await backend.setState('subtasks', subtasks);
-        console.log('[INFO] Initialized demo subtasks in backend');
-      }
-    } catch (error) {
-      console.log('[WARN] No existing subtasks found, initializing demo data');
-      subtasks = mockSubtasks;
-      try {
-        await backend.setState('subtasks', subtasks);
-      } catch (setStateError) {
-        console.error('[ERROR] Failed to save subtasks:', setStateError);
-      }
-    }
-
-    await backend.close();
-  } catch (error) {
-    console.error('[ERROR] Failed to load team configuration:', error);
-    process.exit(1);
+  if (error) {
+    return (
+      <Box flexDirection="column">
+        <Text color="red">Error: {error}</Text>
+        <Text color="yellow">Falling back to demo mode...</Text>
+      </Box>
+    );
   }
-} else {
-  taskName = 'Build a REST API (Demo)';
-  subtasks = mockSubtasks;
-}
 
-if (isDebug) {
-  console.log('[DEBUG] Subtasks count:', subtasks.length);
-  console.log('[DEBUG] Agent IDs:', [...new Set(subtasks.map(st => st.assignedTo))]);
-}
+  const displaySubtasks = isConnected && subtasks.length > 0 ? subtasks : mockSubtasks;
+  const displayTaskName = taskDescription || 'Sample Task';
 
-// Show DAG visualization first
-console.log('\n');
-const dagVisualizer = new DAGVisualizer({ width: 80, showStatus: true });
-const dag = dagVisualizer.visualize(subtasks);
-console.log(dag.lines.join('\n'));
-console.log('\n');
+  return (
+    <Dashboard
+      taskName={displayTaskName}
+      subtasks={displaySubtasks}
+      debug={isDebug}
+      verbose={isVerbose}
+      teamName={teamName || undefined}
+    />
+  );
+};
 
-// Run dashboard
-const { waitUntilExit } = render(
-  <Dashboard
-    taskName={taskName}
-    subtasks={subtasks}
-    debug={isDebug}
-    verbose={isVerbose}
-    teamName={teamName || undefined}
-    onExit={() => {
-      console.log('Goodbye!');
-    }}
-  />
-);
+// Demo Dashboard Component (mock data)
+const DemoDashboard: React.FC = () => {
+  return (
+    <Dashboard
+      taskName="Build a REST API (Demo)"
+      subtasks={mockSubtasks}
+      debug={isDebug}
+      verbose={isVerbose}
+    />
+  );
+};
 
+// Main App Component
+const App: React.FC = () => {
+  // Show DAG visualization first
+  if (isDebug) {
+    const dagVisualizer = new DAGVisualizer({ width: 80, showStatus: true });
+    const result = dagVisualizer.visualize(mockSubtasks);
+    console.log('\n');
+    console.log(result.lines.join('\n'));
+    console.log('\n');
+  }
+
+  return (
+    <>
+      {isLiveMode ? <LiveDashboard /> : <DemoDashboard />}
+    </>
+  );
+};
+
+// Render app
+const { waitUntilExit } = render(<App />);
 await waitUntilExit();

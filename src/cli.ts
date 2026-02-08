@@ -8,6 +8,12 @@ import { createBackend, BackendType } from './communication/index.js';
 import { ApprovalCriteria, ApprovalCriteriaEvaluator } from './approval/index.js';
 import { spawn } from 'child_process';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// ESM用の__dirname定義
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const program = new Command();
 
@@ -156,6 +162,9 @@ program
   .option('-d, --dir <path>', 'Working directory', process.cwd())
   .option('-b, --backend <type>', 'Override communication backend (file, valkey)')
   .option('-u, --base-url <url>', 'Override base URL (for local providers)')
+  .option('--tui', 'Launch TUI Dashboard for real-time monitoring')
+  .option('--debug', 'Enable debug mode for TUI')
+  .option('--verbose', 'Enable verbose mode for TUI')
   .action(async (teamName, task, options) => {
     const teamManager = new TeamManager();
     const teamConfig = await teamManager.getTeamConfig(teamName);
@@ -167,6 +176,36 @@ program
       return;
     }
 
+    // TUI Dashboard モードの場合
+    if (options.tui) {
+      const { spawn } = await import('child_process');
+      // プロジェクトルートディレクトリからTUIを実行
+      const tuiPath = path.join(process.cwd(), 'src', 'tui', 'index.tsx');
+      const args = ['tsx', tuiPath, '--team', teamName, '--task', task];
+
+      if (options.debug) {
+        args.push('--debug');
+      }
+      if (options.verbose) {
+        args.push('--verbose');
+      }
+
+      console.log(`\n🚀 Launching TUI Dashboard for team "${teamName}"`);
+      console.log(`📋 Task: ${task}\n`);
+
+      const tui = spawn('npx', args, {
+        stdio: 'inherit',
+        shell: true
+      });
+
+      tui.on('exit', (code) => {
+        process.exit(code ?? 0);
+      });
+
+      return;
+    }
+
+    // 通常モード
     // バックエンドの決定（オプション優先、次に設定ファイル、デフォルト）
     const backendType = (options.backend as BackendType) || teamConfig.backend || 'file';
     const backend = createBackend({
