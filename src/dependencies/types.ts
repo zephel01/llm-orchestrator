@@ -16,18 +16,32 @@ export enum TaskStatus {
 }
 
 /**
- * Subtask with dependencies
+ * Execution condition based on task status
+ */
+export type ExecutionCondition = 'success' | 'failure' | 'any';
+
+/**
+ * Conditional dependency with execution condition
+ */
+export interface ConditionalDependency {
+  taskId: string;                    // 依存するタスク ID
+  condition: ExecutionCondition | ((result: any) => boolean);  // 実行条件
+}
+
+/**
+ * Subtask with conditional dependencies
  */
 export interface SubtaskWithDependencies {
   id: string;
   description: string;
-  dependencies: string[];  // 依存するサブタスク ID 配列
+  dependencies: (string | ConditionalDependency)[];  // 依存するサブタスク（シンプルまたは条件付き）
   status: TaskStatus;
   assignedTo?: string;     // 割り当てられたエージェント ID
   createdAt?: number;
   startedAt?: number;
   completedAt?: number;
   result?: any;            // タスクの結果（次のタスクで使用可能）
+  progress?: number;       // 進捗率（0-100）
 }
 
 /**
@@ -62,7 +76,7 @@ export interface SubtaskStatus {
   id: string;
   description: string;
   status: TaskStatus;
-  dependencies: string[];
+  dependencies: (string | ConditionalDependency)[];
   assignedTo?: string;
   progress?: number;       // 進捗率（0-100）
 }

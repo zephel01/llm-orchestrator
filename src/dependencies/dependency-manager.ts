@@ -5,7 +5,18 @@
 
 import { DependencyGraph } from './dependency-graph.js';
 import { TopologicalSort } from './topological-sort.js';
-import { SubtaskWithDependencies, TaskStatus, SubtaskStatus, CycleResult } from './types.js';
+import {
+  SubtaskWithDependencies,
+  TaskStatus,
+  SubtaskStatus,
+  CycleResult,
+  ConditionalDependency
+} from './types.js';
+import {
+  normalizeDependency,
+  areDependenciesReady,
+  getDependencyBlockageReason
+} from './condition-evaluator.js';
 
 export class DependencyManager {
   private graph: DependencyGraph;
@@ -54,37 +65,72 @@ export class DependencyManager {
 
   /**
    * Get subtasks that are ready to execute
-   * (all dependencies completed)
+   * (all dependencies completed AND conditions met)
    */
   getReadySubtasks(): SubtaskWithDependencies[] {
     const allSubtasks = this.graph.getAllSubtasks();
     return allSubtasks.filter(subtask => {
-      // Check if all dependencies are completed
-      const allDepsCompleted = subtask.dependencies.every(depId => {
-        const dep = this.graph.getSubtask(depId);
-        return dep?.status === TaskStatus.COMPLETED;
-      });
+      // Check if all dependencies are ready (completed AND conditions met)
+      const allDepsReady = areDependenciesReady(
+        subtask.dependencies,
+        (taskId) => {
+          const dep = this.graph.getSubtask(taskId);
+          return {
+            status: dep?.status ?? TaskStatus.PENDING,
+            result: dep?.result
+          };
+        }
+      );
 
       // Also check status is pending or waiting
       return (subtask.status === TaskStatus.PENDING ||
               subtask.status === TaskStatus.WAITING) &&
-             allDepsCompleted;
+             allDepsReady;
     });
   }
 
   /**
    * Get subtasks that are currently waiting for dependencies
+   * (waiting for dependencies to complete OR conditions to be met)
    */
   getWaitingSubtasks(): SubtaskWithDependencies[] {
     const allSubtasks = this.graph.getAllSubtasks();
     return allSubtasks.filter(subtask => {
-      const hasUncompletedDeps = subtask.dependencies.some(depId => {
-        const dep = this.graph.getSubtask(depId);
-        return dep?.status !== TaskStatus.COMPLETED;
-      });
+      // Check if dependencies are blocking
+      const hasBlockingDeps = !areDependenciesReady(
+        subtask.dependencies,
+        (taskId) => {
+          const dep = this.graph.getSubtask(taskId);
+          return {
+            status: dep?.status ?? TaskStatus.PENDING,
+            result: dep?.result
+          };
+        }
+      );
 
-      return subtask.status === TaskStatus.PENDING && hasUncompletedDeps;
+      return subtask.status === TaskStatus.PENDING && hasBlockingDeps;
     });
+  }
+
+  /**
+   * Get the reason why a subtask is waiting
+   */
+  getBlockageReason(subtaskId: string): string | null {
+    const subtask = this.graph.getSubtask(subtaskId);
+    if (!subtask) {
+      return null;
+    }
+
+    return getDependencyBlockageReason(
+      subtask.dependencies,
+      (taskId) => {
+        const dep = this.graph.getSubtask(taskId);
+        return {
+          status: dep?.status ?? TaskStatus.PENDING,
+          result: dep?.result
+        };
+      }
+    );
   }
 
   /**

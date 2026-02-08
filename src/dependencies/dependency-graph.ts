@@ -4,6 +4,7 @@
  */
 
 import { SubtaskWithDependencies, DependencyNode, CycleResult } from './types.js';
+import { normalizeDependency } from './condition-evaluator.js';
 
 export class DependencyGraph {
   private nodes: Map<string, DependencyNode>;
@@ -29,7 +30,8 @@ export class DependencyGraph {
     this.nodes.set(subtask.id, node);
 
     // Update dependents of dependencies
-    for (const depId of subtask.dependencies) {
+    for (const dep of subtask.dependencies) {
+      const depId = normalizeDependency(dep).taskId;
       const depNode = this.nodes.get(depId);
       if (depNode) {
         depNode.dependents.push(subtask.id);
@@ -79,7 +81,8 @@ export class DependencyGraph {
 
       const node = this.nodes.get(nodeId);
       if (node) {
-        for (const depId of node.subtask.dependencies) {
+        for (const dep of node.subtask.dependencies) {
+          const depId = normalizeDependency(dep).taskId;
           if (!visited.has(depId)) {
             const cycle = dfs(depId, currentPath);
             if (cycle) {
