@@ -333,30 +333,47 @@ export async function createAdvancedSession(config: TmuxSessionConfig): Promise<
   // Wait a bit for TUI to start before splitting
   await new Promise(resolve => setTimeout(resolve, 500));
 
-  // Split horizontally for agent logs
-  await splitHorizontal(sessionName, 0);
-
-  // Resize left pane to 60%
-  await resizePane(sessionName, 0, 0, 60, 'R');
-
-  // Pane 1 (Top Right): Agent Logs
-  await sendCommand(sessionName, 0, 1, 'clear');
-  await sendCommand(sessionName, 0, 1, `cd ${process.cwd()}`);
-  const agentLogPath = logDir || path.join(process.cwd(), '.llm-orchestrator', teamName);
-  await sendCommand(sessionName, 0, 1, `ls -la ${agentLogPath} 2>/dev/null || echo "Log directory not found"`, false);
-
-  // Select pane 0 and split vertically for system logs
-  await selectPane(sessionName, 0, 0);
+  // Step 1: Split vertically to create bottom pane (System Logs)
   await splitVertical(sessionName, 0);
 
-  // Resize top panes to 70%
-  await resizePane(sessionName, 0, 0, 70, 'D');
-  await resizePane(sessionName, 0, 1, 70, 'D');
+  // Now we have:
+  // Pane 0 (Top): TUI Dashboard
+  // Pane 1 (Bottom): System Logs (will be set later)
 
-  // Pane 2 (Bottom): System Logs
+  // Step 2: Select pane 0 and split horizontally to create right pane (Agent Logs)
+  await selectPane(sessionName, 0, 0);
+  await splitHorizontal(sessionName, 0);
+
+  // Now we have 3 panes:
+  // Pane 0 (Top Left): TUI Dashboard
+  // Pane 2 (Top Right): Agent Logs (new pane)
+  // Pane 1 (Bottom): System Logs
+
+  // Wait for split to complete
+  await new Promise(resolve => setTimeout(resolve, 200));
+
+  // Step 3: Resize panes
+  // Resize left pane (Pane 0) to 60% of top area
+  await resizePane(sessionName, 0, 0, 60, 'R');
+
+  // Resize top area to 70% (this affects Pane 0 and Pane 2)
+  await resizePane(sessionName, 0, 0, 70, 'D');
+  await resizePane(sessionName, 0, 2, 70, 'D');
+
+  // Step 4: Configure each pane
+
+  // Pane 0 (Top Left): TUI Dashboard (already running)
+
+  // Pane 2 (Top Right): Agent Logs
   await sendCommand(sessionName, 0, 2, 'clear');
   await sendCommand(sessionName, 0, 2, `cd ${process.cwd()}`);
-  await sendCommand(sessionName, 0, 2, 'htop 2>/dev/null || top', false);
+  const agentLogPath = logDir || path.join(process.cwd(), '.llm-orchestrator', teamName);
+  await sendCommand(sessionName, 0, 2, `ls -la ${agentLogPath} 2>/dev/null || echo "Log directory not found"`, false);
+
+  // Pane 1 (Bottom): System Logs
+  await sendCommand(sessionName, 0, 1, 'clear');
+  await sendCommand(sessionName, 0, 1, `cd ${process.cwd()}`);
+  await sendCommand(sessionName, 0, 1, 'htop 2>/dev/null || top', false);
 
   console.log(`✅ Advanced tmux session created successfully!`);
   console.log(`📊 Top Left:    TUI Dashboard (60%)`);
