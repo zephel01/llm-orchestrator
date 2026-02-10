@@ -729,9 +729,31 @@ llm-orchestrator run my-dev-team "
 ### 問題: tmuxセッションがうまく動かない
 
 **解決:**
-1. 端末サイズを確認（80x24以上）
-2. `--tmux-advanced`ではなく`--tmux`を試す
+1. 端末サイズを確認
+   - 簡易 2 ペインレイアウト（垂直分割）: 80x24 以上
+   - 水平分割 2 ペインレイアウト: 120x24 以上
+   - 高度な 3 ペインレイアウト: 120x30 以上
+2. 端末サイズが不十分な場合、自動的に簡易レイアウトにフォールバックされます
 3. tmuxセッションを再作成
+
+**使用方法:**
+```bash
+# 水平分割された 2 ペインレイアウト（左: TUI Dashboard、右: エージェントログ）
+llm-orchestrator run my-team "タスク" --split-pane
+
+# 高度な 3 ペインレイアウト（左上: TUI Dashboard、右上: エージェントログ、下: システムログ）
+llm-orchestrator run my-team "タスク" --split-pane-advanced
+```
+
+**tmuxショートカット:**
+- セッションからのデタッチ: `Ctrl+B`, その後 `D`
+- セッションへのアタッチ: `tmux attach -t <session-name>`
+- セッションの一覧表示: `llm-orchestrator tmux-list`
+- セッションの終了: `llm-orchestrator tmux-kill <session-name>`
+
+**注意:**
+- `--tmux` および `--tmux-advanced` オプションは非推奨化されています
+- 代わりに `--split-pane` および `--split-pane-advanced` を使用してください
 
 ### 問題: コードが生成されない
 

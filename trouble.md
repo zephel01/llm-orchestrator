@@ -1,11 +1,87 @@
 # 現在の問題
 
 ## 最終更新日時
-2026-02-08
+2026-02-09
 
 ---
 
 ## 解決済みの問題
+
+### 6. tmux Paneが複数作成できない問題 ✅
+
+#### 問題の概要
+`--split-pane-advanced`オプションを使用してtmuxセッションを作成した際、右側のpaneが正しく分割されず、高さが不均等になる問題がありました。
+
+また、`even-vertical`レイアウトを使用すると、左側のpaneの水平分割が失われ、すべてのpaneが垂直方向に均等に分割されてしまう問題もありました。
+
+#### 原因
+1. **レイアウトの問題**: `even-vertical`レイアウトはウィンドウ全体に適用され、水平分割を上書きしてしまう
+2. **リサイズ関数の問題**: `resizePane`関数がパーセンテージをリピートカウントに変換する際、小さな単位でしかリサイズできなかった
+3. **セッションサイズの問題**: 端末サイズが小さい場合、セッションサイズも小さくなり、paneのサイズが期待通りにならなかった
+
+#### 解決策
+1. **main-verticalレイアウトの使用**: `even-vertical`の代わりに`main-vertical`レイアウトを使用し、左側のpaneを大きく保つ
+2. **直接tmuxコマンドの使用**: `resizePane`関数の代わりに、直接tmuxコマンドを使用して大きなリサイズを行う
+3. **動的サイズ計算**: セッションサイズを動的に取得し、それに基づいてリサイズ量を計算する
+4. **複数のレイアウト適用**: `main-vertical`レイアウトと`-E`フラグ（even distribution）を組み合わせて使用し、左側のpaneの幅を再調整する
+
+具体的な変更点：
+- `createAdvancedSession`関数で、セッションサイズを動的に取得
+- 左側のpaneの幅を60%にするために、直接tmuxコマンドを使用
+- 右側のpaneの高さを均等にするために、`select-layout -E`フラグを使用
+- レイアウト適用後に左側のpaneの幅を再調整
+
+#### 結果
+- ✅ 左側のpaneが約59%幅（目標60%）で正しく表示される
+- ✅ 右側のpaneが約40%幅で正しく表示される
+- ✅ 右側のpaneの高さがほぼ均等（7x7x8）になる
+- ✅ 複数のpaneが正しく作成される
+
+#### テスト結果
+```
+Panes for llm-orchestrator-my-ollama-team-1770576498821:
+0: [71x24] [history 62/100000, 48512 bytes] %0  # 左側（操作コンソール）
+1: [48x7] [history 23/100000, 8200 bytes] %1    # 右上（TUI Dashboard）
+2: [48x7] [history 29/100000, 10307 bytes] %2   # 右中（Agent Logs）
+3: [48x8] [history 16/100000, 6567 bytes] %3   # 右下（System Monitor）
+```
+
+---
+
+## 解決済みの問題
+
+### 0. CLI構文エラー (Illegal return statement) ✅
+
+#### 問題の概要
+`node dist/src/cli.js run demo-team "Create a Python script" --split-pane-advanced` を実行したところ、以下のエラーが発生しました：
+
+```
+SyntaxError: Illegal return statement
+    at compileSourceTextModule (node:internal/modules/esm/utils:344:16)
+```
+
+#### 原因
+`src/cli.ts` の `run` コマンドの `action` ハンドラーにコードの重複があり、トランスパイル時に関数の外で `return` 文が生成され、構文エラーになりました。
+
+具体的には、以下のような重複コードがありました：
+- 296行目〜317行目: `try` ブロックがないのに `catch` があるコード
+- 319行目〜352行目: 同じコードが繰り返されている
+- 354行目〜393行目: さらに同じようなコードがあり、`try` がないのに `catch` がある
+
+#### 解決策
+1. 重複コードを削除し、正しい構造に修正
+2. `--split-pane-advanced` オプションが指定された場合は `createAdvancedSession` を呼ぶように変更
+3. `--split-pane` オプションが指定された場合は `createSplitPaneSession` を呼ぶように変更
+4. `--tmux-advanced` オプションの条件判定を修正し、`--split-pane-advanced` と同様に処理するように変更
+
+#### 結果
+- ✅ ビルドエラーが解決
+- ✅ `--split-pane-advanced` オプションが正常に動作
+- ✅ `--split-pane` オプションが正常に動作
+- ✅ `--tmux-advanced` オプションが正常に動作
+- ✅ `--tmux` オプションが正常に動作
+
+---
 
 ### 1. TypeScriptビルドエラー (ioredis) ✅
 

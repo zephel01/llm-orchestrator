@@ -1,169 +1,330 @@
 # LLM Orchestrator TUI Dashboard
 
-Terminal User Interface (TUI) for monitoring and managing LLM agent tasks.
+LLM エージェントのタスクを監視・管理するためのターミナルユーザーインターフェース（TUI）。
 
-## Features
+## 機能
 
-### DAG Visualization
-- Visual representation of task dependencies
-- Real-time status updates
-- Progress tracking for in-progress tasks
-- Conditional dependency support
+### DAG 可視化
+- タスク依存関係の視覚的な表現
+- リアルタイムのステータス更新
+- 実行中タスクの進捗追跡
+- 条件付き依存関係のサポート
 
-### Dashboard
-- Real-time task monitoring
-- Agent status display
-- Progress bars for task completion
-- Log stream with timestamps
-- System resource monitoring (CPU, Memory, GPU)
-- **Interactive keyboard shortcuts**
-- **Task filtering by status**
-- **Help menu**
-- **Toggle visibility of UI components**
+### ダッシュボード
+- リアルタイムタスク監視
+- エージェントステータス表示
+- タスク完了の進捗バー
+- タイムスタンプ付きログストリーム
+- システムリソース監視（CPU、メモリ、GPU）
+- **インタラクティブキーボードショートカット**
+- **ステータスによるタスクフィルタリング**
+- **ヘルプメニュー**
+- **UIコンポーネントの表示/非表示切り替え**
 
-### System Monitor
-- CPU usage with core count
-- Memory usage with detailed stats
-- GPU monitoring (if available)
-- VRAM tracking
-- Color-coded usage indicators
+### システムモニター
+- コア数付きCPU使用率
+- 詳細な統計付きメモリ使用量
+- GPU監視（使用可能な場合）
+- VRAM追跡
+- カラーコード化された使用率インジケーター
 
-### Interactive Features
+### インタラクティブ機能
 
-#### Keyboard Shortcuts
+#### キーボードショートカット
 
-| Key | Action |
+| キー | アクション |
 |-----|--------|
-| `h` / `?` | Show/Hide help menu |
-| `r` | Manual refresh of tasks |
-| `s` | Cycle through status filters (All/Pending/In Progress/Completed/Failed) |
-| `l` | Toggle log display |
-| `a` | Toggle agents panel display |
-| `d` | Toggle debug mode (requires restart) |
-| `v` | Toggle verbose mode (requires restart) |
-| `q` / `ESC` | Exit dashboard |
+| `h` / `?` | ヘルプメニューの表示/非表示 |
+| `r` | タスクの手動更新 |
+| `s` | ステータスフィルターの切り替え（すべて/保留中/実行中/完了/失敗） |
+| `l` | ログ表示の切り替え |
+| `a` | エージェントパネル表示の切り替え |
+| `d` | デバッグモードの切り替え（再起動が必要） |
+| `v` | 詳細モードの切り替え（再起動が必要） |
+| `q` / `ESC` | ダッシュボードを終了 |
 
-#### Status Filtering
+#### ステータスフィルタリング
 
-The dashboard supports filtering tasks by status:
-- **All**: Shows all tasks
-- **Pending**: Shows only pending tasks
-- **In Progress**: Shows only currently executing tasks
-- **Completed**: Shows only finished tasks
-- **Failed**: Shows only failed tasks
+ダッシュボードはステータスによるタスクのフィルタリングをサポートしています：
+- **すべて**: すべてのタスクを表示
+- **保留中**: 保留中のタスクのみを表示
+- **実行中**: 現在実行中のタスクのみを表示
+- **完了**: 完了したタスクのみを表示
+- **失敗**: 失敗したタスクのみを表示
 
-The status bar at the top displays the current filter and task counts for each status.
+上部のステータスバーに現在のフィルターと各ステータスのタスク数が表示されます。
 
-### Modes
+### モード
 
-#### Demo Mode
+#### デモモード
 ```bash
 npm run tui
 ```
-Uses mock data for demonstration purposes.
+デモンストレーション目的でモックデータを使用します。
 
-#### Live Mode
+#### ライブモード
 ```bash
-npm run tui -- --team <team-name> --task "Task description"
+npm run tui -- --team <team-name> --task "タスクの説明"
 ```
-Connects to actual team backend for real task monitoring.
+実際のチームバックエンドに接続してリアルタイムタスク監視を行います。
 
-#### Debug Mode
+#### デバッグモード
 ```bash
 npm run tui -- --debug
 ```
-Enables verbose logging and displays detailed debug information.
+詳細なログを有効にし、デバッグ情報を表示します。
 
-#### Verbose Mode
+#### 詳細モード
 ```bash
 npm run tui -- --verbose
 ```
-Shows extended log entries (20 vs 8 default).
+拡張されたログエントリーを表示します（デフォルト8件に対して20件）。
 
-## Architecture
+## アーキテクチャ
 
-### Components
+### コンポーネント
 
 #### `Dashboard`
-Main dashboard component that coordinates all sub-components and handles keyboard input.
+すべてのサブコンポーネントを調整し、キーボード入力を処理するメインダッシュボードコンポーネント。
 
 #### `DAGVisualizer`
-Renders dependency graphs using ASCII/Unicode characters.
+ASCII/Unicode文字を使用して依存関係グラフをレンダリングします。
 
 #### `DAGView`
-React wrapper for DAG visualization.
+DAG可視化のReactラッパー。
 
 #### `SystemMonitor`
-Monitors system resources using `systeminformation` library.
+`systeminformation`ライブラリを使用してシステムリソースを監視します。
 
 #### `AgentPanel`
-Displays tasks assigned to a specific agent with status tracking.
+ステータス追跡付きで特定のエージェントに割り当てられたタスクを表示します。
 
 #### `LogStream`
-Shows real-time logs from application with configurable history size.
+設定可能な履歴サイズでアプリケーションからのリアルタイムログを表示します。
 
 #### `HelpMenu`
-Displays keyboard shortcuts and usage information.
+キーボードショートカットと使用情報を表示します。
 
 #### `StatusFilter`
-Shows current filter and task counts by status.
+現在のフィルターとステータスごとのタスク数を表示します。
 
 #### `useBackendMonitoring`
-Custom hook for backend integration and real-time updates.
+バックエンド統合とリアルタイム更新用のカスタムフック。
 
-### Backend Integration
+### バックエンド統合
 
-#### Communication
-Uses StorageBackend interface for:
-- Message passing between agents
-- Pub/Sub for task updates
-- State management
-- Lock mechanism
+#### 通信
+StorageBackendインターフェースを使用して：
+- エージェント間のメッセージング
+- タスク更新用のPub/Sub
+- 状態管理
+- ロック機構
 
-#### Task Management
-- CRUD operations for subtasks
-- Batch updates
-- Filtering by agent/status
-- Real-time synchronization
-- Auto-refresh every 2 seconds in live mode
+#### タスク管理
+- サブタスクのCRUD操作
+- バッチ更新
+- エージェント/ステータスによるフィルタリング
+- リアルタイム同期
+- ライブモードで2秒ごとの自動更新
 
-## Development
+## 開発
 
-### Project Structure
+### プロジェクト構造
 ```
 src/tui/
-├── dashboard.tsx           # Main dashboard with interactive features
-├── dag-view.tsx          # DAG visualization wrapper
-├── dag-visualizer.ts     # DAG rendering logic
-├── system-monitor.tsx     # System resource monitor
-├── index.tsx             # TUI entry point
-├── useBackendMonitoring.ts # Backend monitoring hook
-└── STYLE_GUIDE.md        # Style guidelines
+├── dashboard.tsx           # インタラクティブ機能付きメインダッシュボード
+├── dag-view.tsx          # DAG可視化ラッパー
+├── dag-visualizer.ts     # DAGレンダリングロジック
+├── system-monitor.tsx    # システムリソースモニター
+├── index.tsx             # TUIエントリーポイント
+├── useBackendMonitoring.ts # バックエンド監視フック
+└── STYLE_GUIDE.md        # スタイルガイドライン
 ```
 
-### Testing
+### テスト
 
-Run the DAG visualizer demo:
+DAGビジュアライザーデモを実行：
 ```bash
 npm run tui:demo
 ```
 
-### Adding New Features
+### 新機能の追加
 
-1. Create new component in `src/tui/`
-2. Import and integrate in `Dashboard` component
-3. Add keyboard shortcut handling in `useInput` hook
-4. Update help menu if needed
-5. Test thoroughly before committing
+1. `src/tui/` に新しいコンポーネントを作成
+2. Dashboardコンポーネントにインポートして統合
+3. `useInput`フックでキーボードショートカット処理を追加
+4. 必要に応じてヘルプメニューを更新
+5. コミット前に徹底的にテスト
 
-## Future Enhancements
+## 今後の拡張
 
-- Task creation/editing via UI
-- Agent communication monitoring
-- Task dependency visualization
-- Scrolling support for long lists
-- Configuration panel
-- Multiple task management
-- Task search functionality
-- Export/import task configurations
-- Custom theme support
+- UIによるタスク作成/編集
+- エージェント通信監視
+- タスク依存関係の可視化
+- 長いリストのスクロールサポート
+- 設定パネル
+- 複数タスク管理
+- タスク検索機能
+- タスク設定のエクスポート/インポート
+- カスタムテーマサポート
+
+---
+
+## tmux 統合
+
+TUI Dashboardはtmuxと統合して、監視機能を強化しています。
+
+### 機能
+
+- 同時監視のための複数ペインレイアウト
+- 自動的なターミナルサイズ検証
+- ターミナルが小さい場合の簡易レイアウトへの自動フォールバック
+- CLIによる簡単なセッション管理
+
+### インストール
+
+```bash
+# macOS
+brew install tmux
+
+# Linux (Ubuntu/Debian)
+sudo apt-get install tmux
+
+# Linux (Fedora)
+sudo dnf install tmux
+```
+
+### レイアウト
+
+#### 簡易 2 ペインレイアウト（垂直分割）
+
+**ターミナルサイズ**: 80x24 以上
+
+```
+┌───────────────────────────────────────────────┐
+│ TUI Dashboard (上, 70%)                     │
+├───────────────────────────────────────────────┤
+│ エージェントログ (下, 30%)                  │
+└───────────────────────────────────────────────┘
+```
+
+**使用方法**:
+```bash
+llm-orchestrator run my-team "Pythonスクリプトを作成" --split-pane
+```
+
+**注意**: `--split-pane` オプションは簡易 2 ペインレイアウトを垂直分割で作成します。
+
+#### 水平分割 2 ペインレイアウト
+
+**ターミナルサイズ**: 120x24 以上
+
+```
+┌────────────────────────┬─────────────────────────────┐
+│ TUI Dashboard (左)    │ エージェントログ (右)      │
+│ (60%)                │ (40%)                     │
+└────────────────────────┴─────────────────────────────┘
+```
+
+**使用方法**:
+```bash
+llm-orchestrator run my-team "Pythonスクリプトを作成" --split-pane
+```
+
+**注意**: ターミナルが水平分割（120x24）に小さい場合、簡易 2 ペインレイアウトにフォールバックします。
+
+#### 高度な 3 ペインレイアウト
+
+**ターミナルサイズ**: 120x30 以上
+
+```
+┌──────────────────────┬──────────────────────┐
+│ TUI Dashboard        │ エージェントログ     │
+│ (左, 60%)           │ (右, 40%)           │
+├──────────────────────┴──────────────────────┤
+│ システムログ                                │
+│ (下, 30%)                                  │
+└────────────────────────────────────────────┘
+```
+
+**使用方法**:
+```bash
+llm-orchestrator run my-team "Pythonスクリプトを作成" --split-pane-advanced
+```
+
+**注意**: ターミナルが高度なレイアウト（120x30）に小さい場合、簡易 2 ペインレイアウトにフォールバックします。
+
+### tmux ショートカット
+
+| ショートカット | アクション |
+|----------|--------|
+| `Ctrl+B`, `D` | セッションからデタッチ |
+| `Ctrl+B`, `矢印キー` | ペイン間の切り替え（左/右/上/下） |
+| `Ctrl+B`, `:` その後 `kill-session` | tmux内からセッションを終了 |
+
+### セッション管理
+
+```bash
+# すべてのオーケストレータセッションを一覧表示
+llm-orchestrator tmux-list
+
+# 特定のセッションを終了
+llm-orchestrator tmux-kill <session-name>
+
+# セッションにアタッチ
+tmux attach -t <session-name>
+
+# tmuxを使用してセッションを直接終了
+tmux kill-session -t <session-name>
+```
+
+### 要件
+
+- tmux 2.0 以降
+- レイアウトごとのターミナルサイズ要件:
+  - 簡易 2 ペイン（垂直分割）: 80x24 以上
+  - 水平分割 2 ペイン: 120x24 以上
+  - 高度な 3 ペイン: 120x30 以上
+
+### 非推奨オプション
+
+以下のオプションは非推奨であり、将来のバージョンで削除される予定です：
+
+- `--tmux` → 代わりに `--split-pane` を使用してください
+- `--tmux-advanced` → 代わりに `--split-pane-advanced` を使用してください
+
+これらの非推奨オプションはまだ機能しますが、警告メッセージが表示されます。
+
+### 一般的な問題
+
+#### ターミナルサイズが小さすぎる
+
+「Terminal size too small」というエラーが表示された場合、ターミナルウィンドウのサイズを変更して最小要件を満たすようにしてください：
+
+```bash
+# 現在のターミナルサイズを確認
+stty size
+
+# 期待される出力: "行数 列数"
+# 例: "24 80" (24行, 80列)
+```
+
+#### セッションが既に存在する
+
+「Session already exists」というエラーが表示された場合、最初に既存のセッションを終了してください：
+
+```bash
+# セッションを一覧表示
+llm-orchestrator tmux-list
+
+# 既存のセッションを終了
+llm-orchestrator tmux-kill <session-name>
+```
+
+#### 画面の崩れ
+
+画面の崩れやレイアウトの問題が発生した場合：
+
+1. ターミナルサイズが最小要件を満たしていることを確認
+2. `Ctrl+B`, その後 `R` を使用して画面を再描画
+3. セッションを終了し、より大きなターミナルで再起動

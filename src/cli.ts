@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// CLI エントリーポイント
 
 import { Command } from 'commander';
 import { TeamManager } from './team-manager/index.js';
@@ -12,12 +11,12 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import {
-  createTuiSession,
-  createAdvancedSession,
-  killSession,
-  listOrchestratorSessions,
-  isTmuxAvailable
-} from './tui/tmux-integration.js';
+    createTuiSession,
+    createAdvancedSession,
+    killSession,
+    listOrchestratorSessions,
+    isTmuxAvailable
+  } from './tui/tmux-integration.js';
 
 // ESM用の__dirname定義
 const __filename = fileURLToPath(import.meta.url);
@@ -204,24 +203,27 @@ program
   .option('-b, --backend <type>', 'Override communication backend (file, valkey)')
   .option('-u, --base-url <url>', 'Override base URL (for local providers)')
   .option('--tui', 'Launch TUI Dashboard for real-time monitoring')
-  .option('--tmux', 'Launch TUI Dashboard in tmux session (requires 80x24 terminal)')
-  .option('--tmux-advanced', 'Launch TUI Dashboard in advanced tmux layout (requires 120x30 terminal)')
+  .option('--tmux', 'Launch TUI Dashboard in tmux session (deprecated: use --split-pane instead)')
+  .option('--tmux-advanced', 'Launch TUI Dashboard in advanced tmux layout (deprecated: use --split-pane-advanced instead)')
+  .option('--split-pane', 'Launch TUI Dashboard in horizontal split pane (TUI Dashboard | Agent Logs)')
+  .option('--split-pane-advanced [count]', 'Launch TUI Dashboard in advanced split pane (Left: TUI, Right: N panes)', '3')
   .option('--debug', 'Enable debug mode for TUI')
   .option('--verbose', 'Enable verbose mode for TUI')
-  .action(async (teamName, task, options) => {
-    const teamManager = new TeamManager();
-    const teamConfig = await teamManager.getTeamConfig(teamName);
+   .action(async (teamName, task, options) => {
+     const teamManager = new TeamManager();
+     const teamConfig = await teamManager.getTeamConfig(teamName);
 
-    if (!teamConfig) {
-      console.error(`Team "${teamName}" not found. Available teams:`);
-      const teams = await teamManager.discoverTeams();
-      teams.forEach(t => console.log(`  - ${t.name}`));
-      return;
-    }
+     if (!teamConfig) {
+       console.error(`Team "${teamName}" not found. Available teams:`);
+       const teams = await teamManager.discoverTeams();
+       teams.forEach(t => console.log(` - ${t.name}`));
+       return;
+     }
 
     // TUI Dashboard in tmux mode
-    if (options.tmux || options.tmuxAdvanced) {
+    if (options.tmux) {
       try {
+        console.warn('\n⚠️  --tmux is deprecated. Use --split-pane or --split-pane-advanced instead.\n');
         const tmuxAvailable = await isTmuxAvailable();
         if (!tmuxAvailable) {
           console.error('\n❌ tmux is not installed. Please install tmux first:');
@@ -245,23 +247,62 @@ program
           logDir
         };
 
-        if (options.tmuxAdvanced) {
-          await createAdvancedSession(config);
-        } else {
-          await createTuiSession(config);
+        await createTuiSession(config);
+        return;
+      } catch (error: any) {
+        console.error('\n❌ Failed to create tmux session:', error.message);
+        console.log('\n💡 You can still use --tui option for standalone TUI Dashboard\n');
+        process.exit(1);
+      }
+    }
+
+    // Split pane mode
+    if (options.splitPane || options.splitPaneAdvanced || options.tmuxAdvanced) {
+      console.log('[DEBUG] Split pane mode triggered');
+      try {
+        const tmuxAvailable = await isTmuxAvailable();
+        if (!tmuxAvailable) {
+          console.error('\n❌ tmux is not installed. Please install tmux first:');
+          console.error('   macOS:   brew install tmux');
+          console.error('   Linux:   sudo apt-get install tmux');
+          console.error('   Windows: Use WSL with tmux\n');
+          process.exit(1);
         }
 
-        // Attach to the tmux session
-        const { spawn } = await import('child_process');
-        const attachProcess = spawn('tmux', ['attach-session', '-t', sessionName], {
-          stdio: 'inherit',
-          shell: true
-        });
+        const tuiPath = path.join(process.cwd(), 'src', 'tui', 'index.tsx');
+        const sessionName = `llm-orchestrator-${teamName}-${Date.now()}`;
+        const logDir = path.join(process.env.HOME || '.', '.llm-orchestrator', teamName);
 
-        attachProcess.on('exit', (code) => {
-          process.exit(code ?? 0);
-        });
+        // Parse right pane count from --split-pane-advanced option
+        let rightPaneCount = 3; // Default to 3 panes
+        if (options.splitPaneAdvanced) {
+          const count = parseInt(options.splitPaneAdvanced as string, 10);
+          if (!isNaN(count) && count >= 2 && count <= 6) {
+            rightPaneCount = count;
+          }
+        } else if (options.tmuxAdvanced) {
+          const count = parseInt(options.tmuxAdvanced as string, 10);
+          if (!isNaN(count) && count >= 2 && count <= 6) {
+            rightPaneCount = count;
+          }
+        }
 
+        console.log(`[DEBUG] rightPaneCount: ${rightPaneCount}`);
+        console.log(`[DEBUG] About to call createAdvancedSession...`);
+
+        const config = {
+          sessionName,
+          teamName,
+          task,
+          tuiPath,
+          debug: options.debug,
+          verbose: options.verbose,
+          logDir,
+          rightPaneCount
+        };
+
+        await createAdvancedSession(config);
+        console.log(`[DEBUG] createAdvancedSession completed`);
         return;
       } catch (error: any) {
         console.error('\n❌ Failed to create tmux session:', error.message);

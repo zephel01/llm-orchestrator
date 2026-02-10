@@ -239,7 +239,20 @@ llm-orchestrator delete <name>
 
 # タスクの実行
 llm-orchestrator run <team-name> <task> [options]
-  -d, --dir <path>       作業ディレクトリ
+  -d, --dir <path>                 作業ディレクトリ
+  -b, --backend <type>             通信バックエンド（file, valkey）
+  -u, --base-url <url>             ベースURL（ローカルプロバイダー用）
+  --tui                             スタンドアロンのTUI Dashboardを起動
+  --split-pane                      水平分割された tmux セッションでTUI Dashboardを起動（左: TUI、右: ログ）
+  --split-pane-advanced             高度な tmux セッションでTUI Dashboardを起動（左上: TUI、右上: ログ、下: システム）
+  --debug                           デバッグモードを有効化
+  --verbose                         詳細ログモードを有効化
+
+# tmux セッションの一覧表示
+llm-orchestrator tmux-list
+
+# tmux セッションの終了
+llm-orchestrator tmux-kill <session-name>
 
 # プロバイダーのテスト
 llm-orchestrator test-provider <type> [options]
@@ -331,12 +344,16 @@ llm-orchestrator run my-team "Write a Python script" --tui
 tmuxを使用すると、複数のペインでTUI Dashboardとログを同時に監視できます。
 
 ```bash
-# 2ペインレイアウト（TUI + ログ）
-llm-orchestrator run my-team "Write a Python script" --tmux
+# 高度なレイアウト（左: 操作コンソール、右: N個のペイン、デフォルトは3個）
+llm-orchestrator run my-team "Write a Python script" --split-pane-advanced
 
-# 3ペインレイアウト（TUI + エージェントログ + システムログ）
-llm-orchestrator run my-team "Write a Python script" --tmux-advanced
+# 右側のペイン数を指定（2〜6個）
+llm-orchestrator run my-team "Write a Python script" --split-pane-advanced 4
 ```
+
+**非推奨オプション**:
+- `--tmux` は非推奨です
+- `--tmux-advanced` は非推奨です
 
 **tmuxショートカット**:
 - セッションからのデタッチ: `Ctrl+B`, その後 `D`
@@ -346,8 +363,15 @@ llm-orchestrator run my-team "Write a Python script" --tmux-advanced
 
 **要件**:
 - tmux 2.0以降
-- 2ペインレイアウト: 端末サイズ 80x24 以上
-- 3ペインレイアウト: 端末サイズ 120x30 以上
+- 簡易 2 ペインレイアウト（垂直分割）: 端末サイズ 80x24 以上
+- 高度なレイアウト: 端末サイズ 120x24 以上（右側のペイン数によって増加）
+
+**レイアウト**:
+- 簡易 2 ペインレイアウト: TUI Dashboard（上 70%）| エージェントログ（下 30%）
+- 高度なレイアウト: 操作コンソール（左 60%）| 右側 N 個のペイン
+  - 右上: TUI Dashboard
+  - 右中: エージェントログ
+  - 右下: システムログなど
 
 **インストール**:
 ```bash
