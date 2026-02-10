@@ -239,7 +239,20 @@ llm-orchestrator delete <name>
 
 # タスクの実行
 llm-orchestrator run <team-name> <task> [options]
-  -d, --dir <path>       作業ディレクトリ
+  -d, --dir <path>                 作業ディレクトリ
+  -b, --backend <type>             通信バックエンド（file, valkey）
+  -u, --base-url <url>             ベースURL（ローカルプロバイダー用）
+  --tui                             スタンドアロンのTUI Dashboardを起動
+  --split-pane                      水平分割された tmux セッションでTUI Dashboardを起動（左: TUI、右: ログ）
+  --split-pane-advanced             高度な tmux セッションでTUI Dashboardを起動（左上: TUI、右上: ログ、下: システム）
+  --debug                           デバッグモードを有効化
+  --verbose                         詳細ログモードを有効化
+
+# tmux セッションの一覧表示
+llm-orchestrator tmux-list
+
+# tmux セッションの終了
+llm-orchestrator tmux-kill <session-name>
 
 # プロバイダーのテスト
 llm-orchestrator test-provider <type> [options]
@@ -310,9 +323,67 @@ src/
   - ✅ エージェントパネル付き進捗追跡
   - ✅ リアルタイムログストリーミング
   - ✅ インタラクティブキーボードコントロール（q/ESCで終了）
-- [ ] DAG可視化（ASCII/Unicode）
-- [ ] tmux統合
-- [ ] CLIとTUIの統合
+- ✅ DAG可視化（ASCII/Unicode）
+- ✅ tmux統合
+- ✅ CLIとTUIの統合
+
+### TUI Dashboard
+
+TUI Dashboardは、ターミナル内でエージェントの進捗をリアルタイムで監視できるインタラクティブなUIです。
+
+```bash
+# デモモードで起動
+llm-orchestrator tui
+
+# チームを指定してライブモードで起動
+llm-orchestrator run my-team "Write a Python script" --tui
+```
+
+#### tmux統合
+
+tmuxを使用すると、複数のペインでTUI Dashboardとログを同時に監視できます。
+
+```bash
+# 高度なレイアウト（左: 操作コンソール、右: N個のペイン、デフォルトは3個）
+llm-orchestrator run my-team "Write a Python script" --split-pane-advanced
+
+# 右側のペイン数を指定（2〜6個）
+llm-orchestrator run my-team "Write a Python script" --split-pane-advanced 4
+```
+
+**非推奨オプション**:
+- `--tmux` は非推奨です
+- `--tmux-advanced` は非推奨です
+
+**tmuxショートカット**:
+- セッションからのデタッチ: `Ctrl+B`, その後 `D`
+- セッションへのアタッチ: `tmux attach -t <session-name>`
+- セッションの一覧表示: `llm-orchestrator tmux-list`
+- セッションの終了: `llm-orchestrator tmux-kill <session-name>` または `tmux kill-session -t <session-name>`
+
+**要件**:
+- tmux 2.0以降
+- 簡易 2 ペインレイアウト（垂直分割）: 端末サイズ 80x24 以上
+- 高度なレイアウト: 端末サイズ 120x24 以上（右側のペイン数によって増加）
+
+**レイアウト**:
+- 簡易 2 ペインレイアウト: TUI Dashboard（上 70%）| エージェントログ（下 30%）
+- 高度なレイアウト: 操作コンソール（左 60%）| 右側 N 個のペイン
+  - 右上: TUI Dashboard
+  - 右中: エージェントログ
+  - 右下: システムログなど
+
+**インストール**:
+```bash
+# macOS
+brew install tmux
+
+# Linux (Ubuntu/Debian)
+sudo apt-get install tmux
+
+# Linux (Fedora)
+sudo dnf install tmux
+```
 
 ## 設定
 
@@ -346,3 +417,7 @@ src/
 ## ライセンス
 
 MIT
+
+## 開発ガイド
+
+このツールを使った開発の詳細な手順については、[DEVELOPMENT_GUIDE.md](DEVELOPMENT_GUIDE.md)を参照してください。

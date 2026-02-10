@@ -1,4 +1,4 @@
-// CLI エントリーポイント
+#!/usr/bin/env node
 
 import { Command } from 'commander';
 import { TeamManager } from './team-manager/index.js';
@@ -8,6 +8,19 @@ import { createBackend, BackendType } from './communication/index.js';
 import { ApprovalCriteria, ApprovalCriteriaEvaluator } from './approval/index.js';
 import { spawn } from 'child_process';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import {
+    createTuiSession,
+    createAdvancedSession,
+    killSession,
+    listOrchestratorSessions,
+    isTmuxAvailable
+  } from './tui/tmux-integration.js';
+
+// ESM用の__dirname定義
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const program = new Command();
 
@@ -148,6 +161,39 @@ program
     }
   });
 
+// List tmux sessions
+program
+  .command('tmux-list')
+  .description('List all LLM Orchestrator tmux sessions')
+  .action(async () => {
+    const sessions = await listOrchestratorSessions();
+
+    if (sessions.length === 0) {
+      console.log('No LLM Orchestrator tmux sessions found.');
+      console.log('Create one with: llm-orchestrator run <team-name> "<task>" --tmux');
+    } else {
+      console.log('LLM Orchestrator tmux sessions:');
+      sessions.forEach(session => {
+        console.log(`  - ${session}`);
+        console.log(`    Attach:   tmux attach -t ${session}`);
+        console.log(`    Kill:     tmux kill-session -t ${session}`);
+      });
+    }
+  });
+
+// Kill tmux session
+program
+  .command('tmux-kill <session-name>')
+  .description('Kill a specific tmux session')
+  .action(async (sessionName) => {
+    try {
+      await killSession(sessionName);
+      console.log(`tmux session "${sessionName}" killed.`);
+    } catch (error: any) {
+      console.error('Error killing tmux session:', error.message);
+    }
+  });
+
 // Run task
 program
   .command('run <team-name>')
@@ -156,17 +202,145 @@ program
   .option('-d, --dir <path>', 'Working directory', process.cwd())
   .option('-b, --backend <type>', 'Override communication backend (file, valkey)')
   .option('-u, --base-url <url>', 'Override base URL (for local providers)')
-  .action(async (teamName, task, options) => {
-    const teamManager = new TeamManager();
-    const teamConfig = await teamManager.getTeamConfig(teamName);
+  .option('--tui', 'Launch TUI Dashboard for real-time monitoring')
+  .option('--tmux', 'Launch TUI Dashboard in tmux session (deprecated: use --split-pane instead)')
+  .option('--tmux-advanced', 'Launch TUI Dashboard in advanced tmux layout (deprecated: use --split-pane-advanced instead)')
+  .option('--split-pane', 'Launch TUI Dashboard in horizontal split pane (TUI Dashboard | Agent Logs)')
+  .option('--split-pane-advanced [count]', 'Launch TUI Dashboard in advanced split pane (Left: TUI, Right: N panes)', '3')
+  .option('--debug', 'Enable debug mode for TUI')
+  .option('--verbose', 'Enable verbose mode for TUI')
+   .action(async (teamName, task, options) => {
+     const teamManager = new TeamManager();
+     const teamConfig = await teamManager.getTeamConfig(teamName);
 
-    if (!teamConfig) {
-      console.error(`Team "${teamName}" not found. Available teams:`);
-      const teams = await teamManager.discoverTeams();
-      teams.forEach(t => console.log(`  - ${t.name}`));
+     if (!teamConfig) {
+       console.error(`Team "${teamName}" not found. Available teams:`);
+       const teams = await teamManager.discoverTeams();
+       teams.forEach(t => console.log(` - ${t.name}`));
+       return;
+     }
+
+    // TUI Dashboard in tmux mode
+    if (options.tmux) {
+      try {
+        console.warn('\n⚠️  --tmux is deprecated. Use --split-pane or --split-pane-advanced instead.\n');
+        const tmuxAvailable = await isTmuxAvailable();
+        if (!tmuxAvailable) {
+          console.error('\n❌ tmux is not installed. Please install tmux first:');
+          console.error('   macOS:   brew install tmux');
+          console.error('   Linux:   sudo apt-get install tmux');
+          console.error('   Windows: Use WSL with tmux\n');
+          process.exit(1);
+        }
+
+        const tuiPath = path.join(process.cwd(), 'src', 'tui', 'index.tsx');
+        const sessionName = `llm-orchestrator-${teamName}-${Date.now()}`;
+        const logDir = path.join(process.env.HOME || '.', '.llm-orchestrator', teamName);
+
+        const config = {
+          sessionName,
+          teamName,
+          task,
+          tuiPath,
+          debug: options.debug,
+          verbose: options.verbose,
+          logDir
+        };
+
+        await createTuiSession(config);
+        return;
+      } catch (error: any) {
+        console.error('\n❌ Failed to create tmux session:', error.message);
+        console.log('\n💡 You can still use --tui option for standalone TUI Dashboard\n');
+        process.exit(1);
+      }
+    }
+
+    // Split pane mode
+    if (options.splitPane || options.splitPaneAdvanced || options.tmuxAdvanced) {
+      console.log('[DEBUG] Split pane mode triggered');
+      try {
+        const tmuxAvailable = await isTmuxAvailable();
+        if (!tmuxAvailable) {
+          console.error('\n❌ tmux is not installed. Please install tmux first:');
+          console.error('   macOS:   brew install tmux');
+          console.error('   Linux:   sudo apt-get install tmux');
+          console.error('   Windows: Use WSL with tmux\n');
+          process.exit(1);
+        }
+
+        const tuiPath = path.join(process.cwd(), 'src', 'tui', 'index.tsx');
+        const sessionName = `llm-orchestrator-${teamName}-${Date.now()}`;
+        const logDir = path.join(process.env.HOME || '.', '.llm-orchestrator', teamName);
+
+        // Parse right pane count from --split-pane-advanced option
+        let rightPaneCount = 3; // Default to 3 panes
+        if (options.splitPaneAdvanced) {
+          const count = parseInt(options.splitPaneAdvanced as string, 10);
+          if (!isNaN(count) && count >= 2 && count <= 6) {
+            rightPaneCount = count;
+          }
+        } else if (options.tmuxAdvanced) {
+          const count = parseInt(options.tmuxAdvanced as string, 10);
+          if (!isNaN(count) && count >= 2 && count <= 6) {
+            rightPaneCount = count;
+          }
+        }
+
+        console.log(`[DEBUG] rightPaneCount: ${rightPaneCount}`);
+        console.log(`[DEBUG] About to call createAdvancedSession...`);
+
+        const config = {
+          sessionName,
+          teamName,
+          task,
+          tuiPath,
+          debug: options.debug,
+          verbose: options.verbose,
+          logDir,
+          rightPaneCount
+        };
+
+        await createAdvancedSession(config);
+        console.log(`[DEBUG] createAdvancedSession completed`);
+        return;
+      } catch (error: any) {
+        console.error('\n❌ Failed to create tmux session:', error.message);
+        console.log('\n💡 You can still use --tui option for standalone TUI Dashboard\n');
+        process.exit(1);
+      }
+    }
+
+    // TUI Dashboard モードの場合
+    if (options.tui) {
+      const { spawn } = await import('child_process');
+      // プロジェクトルートディレクトリからTUIを実行
+      const tuiPath = path.join(process.cwd(), 'src', 'tui', 'index.tsx');
+      const args = ['tsx', tuiPath, '--team', teamName, '--task', task];
+
+      if (options.debug) {
+        args.push('--debug');
+      }
+      if (options.verbose) {
+        args.push('--verbose');
+      }
+
+      console.log(`\n🚀 Launching TUI Dashboard for team "${teamName}"`);
+      console.log(`📋 Task: ${task}\n`);
+
+      const tui = spawn('npx', args, {
+        stdio: 'inherit',
+        shell: true
+      });
+
+      tui.on('exit', (code) => {
+        process.exit(code ?? 0);
+      });
+
       return;
     }
 
+    // 通常モード
     // バックエンドの決定（オプション優先、次に設定ファイル、デフォルト）
     const backendType = (options.backend as BackendType) || teamConfig.backend || 'file';
     const backend = createBackend({
@@ -266,6 +440,42 @@ program
       console.error('\n❌ Provider test failed:', (error as Error).message);
       process.exit(1);
     }
+  });
+
+// TUI Dashboard (Demo)
+program
+  .command('tui')
+  .description('Launch TUI Dashboard')
+  .option('-d, --debug', 'Enable debug mode with verbose logging')
+  .option('-v, --verbose', 'Show verbose output')
+  .option('--team <name>', 'Team name to monitor')
+  .option('--task <description>', 'Task description (required with --team)')
+  .action(async (options) => {
+    const { spawn } = await import('child_process');
+    const tuiPath = path.join(__dirname, '..', 'tui', 'index.tsx');
+    const args = ['tsx', tuiPath];
+
+    if (options.debug) {
+      args.push('--debug');
+    }
+    if (options.verbose) {
+      args.push('--verbose');
+    }
+    if (options.team) {
+      args.push('--team', options.team);
+    }
+    if (options.task) {
+      args.push('--task', options.task);
+    }
+
+    const tui = spawn('npx', args, {
+      stdio: 'inherit',
+      shell: true
+    });
+
+    tui.on('exit', (code) => {
+      process.exit(code ?? 0);
+    });
   });
 
   program.parse();

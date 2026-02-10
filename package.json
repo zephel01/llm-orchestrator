@@ -2,13 +2,13 @@
   "name": "llm-orchestrator",
   "version": "0.5.1",
   "description": "Multi-agent system for autonomous task execution with LLMs. Support for local/remote LLM providers (Anthropic, OpenAI, Ollama, LM Studio, llama-server) with configurable base URLs.",
-  "main": "dist/cli.js",
-  "type": "module",
-  "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "start": "node dist/cli.js",
-    "orchestrator": "node dist/cli.js",
+    "main": "dist/cli.js",
+    "type": "module",
+    "scripts": {
+      "build": "tsc",
+      "dev": "tsc --watch",
+      "start": "node dist/cli.js",
+      "orchestrator": "node dist/cli.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:unit": "node tests/test.mjs",
     "test:valkey": "node tests/test-valkey.mjs",
@@ -20,11 +20,14 @@
     "test:conditional": "node dist/tests/test-conditional-dependencies.js",
     "test:phase4": "npm run test:dependencies && npm run test:progress && npm run test:recovery",
     "test:phase5": "npm run test:conditional",
-    "tui": "tsx src/tui/index.tsx"
+    "test:tui": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/tui-dag-visualizer.test.ts",
+    "tui": "tsx src/tui/index.tsx",
+    "tui:demo": "npx tsx tests/test-dag-visualizer.ts",
+    "test:tmux": "tsx tests/test-tmux-integration.ts"
   },
-  "bin": {
-    "llm-orchestrator": "./dist/cli.js"
-  },
+    "bin": {
+      "llm-orchestrator": "./dist/src/cli.js"
+    },
   "keywords": [
     "ai",
     "agents",
@@ -40,18 +43,22 @@
     "chokidar": "^3.5.3",
     "commander": "^12.0.0",
     "ink": "^6.6.0",
-    "ioredis": "^5.9.2",
+    "ioredis": "^4.28.5",
     "openai": "^4.75.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "systeminformation": "^5.30.7",
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.2",
+    "@types/ioredis": "^4.28.10",
     "@types/jest": "^29.5.0",
     "@types/node": "^20.0.0",
     "@types/react": "^19.2.13",
     "@types/react-dom": "^19.2.3",
     "jest": "^29.7.0",
+    "ts-jest": "^29.4.6",
     "tsx": "^4.21.0",
     "typescript": "^5.0.0"
   }
